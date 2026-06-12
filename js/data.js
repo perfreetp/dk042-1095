@@ -460,6 +460,12 @@ const GameData = {
     }
   },
 
+  difficulties: {
+    normal: { id: 'normal', name: '普通', color: '#2ecc71', hpMult: 1.0, atkMult: 1.0, goldMult: 1.0, expMult: 1.0, dropMult: 1.0, desc: '标准难度，适合首次探索' },
+    hard: { id: 'hard', name: '精英', color: '#3498db', hpMult: 1.8, atkMult: 1.3, goldMult: 1.5, expMult: 1.5, dropMult: 1.3, desc: '精英难度，首领更强，奖励更丰厚' },
+    nightmare: { id: 'nightmare', name: '噩梦', color: '#9b59b6', hpMult: 3.0, atkMult: 2.0, goldMult: 2.5, expMult: 2.0, dropMult: 2.0, desc: '噩梦难度，极限挑战，顶级掉落' }
+  },
+
   talents: {
     t1: { id: 't1', name: '力量强化', description: '攻击力 +10%', effect: { atk: 1.1 }, cost: 1, maxLevel: 5 },
     t2: { id: 't2', name: '生命强化', description: '生命值 +15%', effect: { hp: 1.15 }, cost: 1, maxLevel: 5 },

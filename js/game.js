@@ -16,6 +16,8 @@ const Game = {
   levelItemsPickedUp: {},
   levelGoldPickedUp: 0,
   levelExpGained: 0,
+  currentDifficulty: 'normal',
+  levelRecordBroken: false,
   paused: false,
   
   init() {
@@ -246,8 +248,13 @@ const Game = {
     const goldBonus = stats.goldBonus || 1;
     const expBonus = stats.expBonus || 1;
     
-    const goldDrop = Math.floor(monster.data.gold * goldBonus);
-    const expDrop = Math.floor(monster.data.exp * expBonus);
+    const diff = this.getDifficultyInfo();
+    const diffGoldMult = diff ? diff.goldMult : 1;
+    const diffExpMult = diff ? diff.expMult : 1;
+    const diffDropMult = diff ? diff.dropMult : 1;
+    
+    const goldDrop = Math.floor(monster.data.gold * goldBonus * diffGoldMult);
+    const expDrop = Math.floor(monster.data.exp * expBonus * diffExpMult);
     
     const actualDrops = [];
     
@@ -262,7 +269,8 @@ const Game = {
     }
     
     for (const drop of monster.data.drops) {
-      if (Math.random() < drop.chance) {
+      const chance = Math.min(1, drop.chance * diffDropMult);
+      if (Math.random() < chance) {
         ItemManager.addDrop(drop.item, monster.x + randomRange(-20, 20), monster.y - 20);
         actualDrops.push(drop.item);
       }
@@ -279,7 +287,8 @@ const Game = {
       const clearTime = Date.now() - this.levelStartTime;
       const maxCombo = this.player.maxCombo;
       const grade = UI.calculateGrade(clearTime, maxCombo);
-      this.recordBossKill(monster.type, clearTime, grade);
+      const broken = this.recordBossKill(monster.type, clearTime, grade);
+      if (broken) this.levelRecordBroken = true;
       
       if (MapManager.currentRegion && MapManager.currentRegion.boss2 && !MapManager.bossDefeated) {
         MapManager.bossDefeated = true;
@@ -486,7 +495,9 @@ const Game = {
     Quests.loadForPlayer(this.player);
   },
   
-  startLevel() {
+  startLevel(difficulty = 'normal') {
+    this.currentDifficulty = difficulty;
+    this.levelRecordBroken = false;
     this.levelStartTime = Date.now();
     this.levelDrops = [];
     this.levelStartGold = this.player ? this.player.gold : 0;
@@ -497,6 +508,16 @@ const Game = {
     this.levelExpGained = 0;
     this.player.comboCount = 0;
     this.player.maxCombo = 0;
+  },
+
+  getDifficultyInfo() {
+    return GameData.difficulties[this.currentDifficulty] || GameData.difficulties.normal;
+  },
+
+  setDifficulty(diffId) {
+    if (GameData.difficulties[diffId]) {
+      this.currentDifficulty = diffId;
+    }
   },
 
   recordMonsterKill(monster) {
@@ -565,6 +586,7 @@ const Game = {
       this.player.bossRecords = {};
     }
     
+    const diff = this.currentDifficulty;
     const gradeOrder = { S: 5, A: 4, B: 3, C: 2, D: 1 };
     
     if (!this.player.bossRecords[bossType]) {
@@ -573,7 +595,8 @@ const Game = {
         killCount: 1,
         bestGrade: grade,
         bestTime: clearTime,
-        firstKill: Date.now()
+        firstKill: Date.now(),
+        difficulties: {}
       };
     } else {
       const rec = this.player.bossRecords[bossType];
@@ -587,8 +610,36 @@ const Game = {
       }
     }
     
+    const rec = this.player.bossRecords[bossType];
+    let broken = false;
+    
+    if (!rec.difficulties[diff]) {
+      rec.difficulties[diff] = {
+        cleared: true,
+        bestGrade: grade,
+        bestTime: clearTime,
+        killCount: 1,
+        firstKill: Date.now()
+      };
+      broken = true;
+    } else {
+      const dr = rec.difficulties[diff];
+      dr.killCount++;
+      const oldDiffGrade = dr.bestGrade;
+      if (!oldDiffGrade || gradeOrder[grade] > gradeOrder[oldDiffGrade]) {
+        dr.bestGrade = grade;
+        broken = true;
+      }
+      if (clearTime < dr.bestTime) {
+        dr.bestTime = clearTime;
+        broken = true;
+      }
+    }
+    
     if (!this.player.totalKills) this.player.totalKills = 0;
     this.player.totalKills++;
+    
+    return broken;
   },
 
   awardBossBadge(bossType) {

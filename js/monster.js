@@ -4,8 +4,18 @@ class Monster {
     this.data = GameData.monsters[type];
     this.x = x;
     this.y = y;
-    this.currentHP = this.data.hp;
-    this.maxHP = this.data.hp;
+    
+    const diff = Game && Game.currentDifficulty && GameData.difficulties[Game.currentDifficulty]
+      ? GameData.difficulties[Game.currentDifficulty]
+      : null;
+    
+    const hpMult = diff ? diff.hpMult : 1;
+    const baseHp = this.data.hp;
+    this.maxHP = Math.floor(baseHp * hpMult);
+    this.currentHP = this.maxHP;
+    
+    this.atkMult = diff ? diff.atkMult : 1;
+    
     this.isBoss = this.data.isBoss;
     this.isDummy = this.data.isDummy;
     this.facingRight = false;
@@ -118,11 +128,12 @@ class Monster {
   }
   
   performAttack(player) {
+    const atk = this.data.atk * (this.atkMult || 1);
     if (this.isBoss) {
       const attackType = randomInt(0, 2);
       
       if (attackType === 0) {
-        player.takeDamage(this.data.atk * 1.5);
+        player.takeDamage(atk * 1.5);
         Renderer.shake(8, 200);
       } else if (attackType === 1 && this.projectileRange > 0) {
         const dx = player.x - this.x;
@@ -133,14 +144,14 @@ class Monster {
           y: this.y - this.data.size / 2,
           vx: (dx / dist) * 6,
           vy: (dy / dist) * 6,
-          damage: this.data.atk,
+          damage: atk,
           isEnemy: true,
           range: this.projectileRange,
           distance: 0,
           skill: 'enemy'
         });
       } else {
-        const aoeDamage = this.data.atk;
+        const aoeDamage = atk;
         const aoeRange = 100;
         const dx = player.x - this.x;
         const dy = player.y - this.y;
@@ -151,7 +162,7 @@ class Monster {
         Game.addEffect({ type: 'explosion', x: this.x, y: this.y - this.data.size / 2, life: 500, maxLife: 500 });
       }
     } else {
-      player.takeDamage(this.data.atk);
+      player.takeDamage(atk);
     }
   }
   
