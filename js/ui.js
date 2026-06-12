@@ -93,7 +93,7 @@ const UI = {
         </div>
         <div>
           <h3 style="color: #4fc3f7; margin-bottom: 10px; font-size: 14px;">交互控制</h3>
-          <p style="font-size: 13px; margin: 5px 0;">E 或 F：交互/拾取</p>
+          <p style="font-size: 13px; margin: 5px 0;">E：交互/拾取</p>
           <p style="font-size: 13px; margin: 5px 0;">ESC：暂停/关闭面板</p>
         </div>
         <div>
@@ -103,6 +103,7 @@ const UI = {
           <p style="font-size: 13px; margin: 5px 0;">K：技能面板</p>
           <p style="font-size: 13px; margin: 5px 0;">M：地图</p>
           <p style="font-size: 13px; margin: 5px 0;">L：怪物图鉴</p>
+          <p style="font-size: 13px; margin: 5px 0;">F：角色档案</p>
         </div>
       </div>
       <div style="text-align: center;">
@@ -351,7 +352,7 @@ const UI = {
       
       <div style="position: absolute; bottom: 20px; right: 15px; z-index: 50;">
         <div style="background: rgba(0, 0, 0, 0.7); padding: 8px 12px; border-radius: 8px; font-size: 11px; color: rgba(200, 220, 255, 0.6); border: 1px solid rgba(100, 150, 255, 0.3);">
-          <div>B:背包 | Q:任务 | K:技能 | M:地图 | L:图鉴</div>
+          <div>E:交互 | B:背包 | Q:任务 | K:技能 | M:地图 | L:图鉴 | F:档案</div>
         </div>
       </div>
     `;
@@ -563,15 +564,25 @@ const UI = {
       enhanceInfo = `<p style="color: #f1c40f; margin-top: 3px;">⚡ 强化 +${item.enhanceLevel}: ${statName} +${bonus}</p>`;
     }
     
+    const sourceInfo = itemData.source
+      ? `<p style="color: #f1c40f; margin-top: 3px;">🏅 来源: ${itemData.source}</p>`
+      : '';
+    
+    const typeBadge = itemData.type === 'badge'
+      ? '<span style="background: rgba(241, 196, 15, 0.2); color: #f1c40f; padding: 1px 6px; border-radius: 3px; font-size: 10px; margin-left: 8px;">徽章</span>'
+      : '';
+    
     itemInfo.innerHTML = `
       <span style="color: ${rarityColor}; font-weight: bold; font-size: 15px;">
-        ${itemData.icon} ${itemData.name}${item.enhanceLevel ? ` <span style="color:#f1c40f;">+${item.enhanceLevel}</span>` : ''}
+        ${itemData.icon} ${itemData.name}${item.enhanceLevel ? ` <span style="color:#f1c40f;">+${item.enhanceLevel}</span>` : ''}${typeBadge}
       </span>
       <span style="color: #f1c40f; margin-left: 10px;">x${item.count}</span>
       <p style="color: rgba(200, 220, 255, 0.8); margin-top: 5px;">${itemData.description}</p>
       ${itemData.stats ? `<p style="color: #2ecc71; margin-top: 5px;">${this.formatStats(itemData.stats, item.enhanceLevel)}</p>` : ''}
       ${enhanceInfo}
-      ${itemData.price ? `<p style="color: #f1c40f; margin-top: 5px;">💰 回收价: ${sellPrice} 金币${item.enhanceLevel ? ' (含强化)' : ''}</p>` : ''}
+      ${sourceInfo}
+      ${itemData.price && itemData.type !== 'badge' ? `<p style="color: #f1c40f; margin-top: 5px;">💰 回收价: ${sellPrice} 金币${item.enhanceLevel ? ' (含强化)' : ''}</p>` : ''}
+      ${itemData.type === 'badge' ? `<p style="color: #888; margin-top: 5px; font-size: 11px;">永久生效 · 不可出售 · 已自动激活加成</p>` : ''}
     `;
     
     let buttons = '';
@@ -581,7 +592,7 @@ const UI = {
     if (itemData.type === 'consumable') {
       buttons += `<button class="ui-button" onclick="UI.useSelectedItem()">使用</button>`;
     }
-    if (itemData.price) {
+    if (itemData.price && itemData.type !== 'badge') {
       buttons += `<button class="ui-button secondary" onclick="UI.sellSelectedItem()">出售 (${Shop.getSellPrice(item)}金)</button>`;
     }
     
@@ -661,15 +672,24 @@ const UI = {
     const tempItem = { itemId, count: 1, enhanceLevel };
     const sellPrice = Shop.getSellPrice(tempItem);
     
+    const sourceInfo = itemData.source
+      ? `<div style="margin-top: 4px; color: #f1c40f; font-size: 11px;">🏅 来源: ${itemData.source}</div>`
+      : '';
+    
+    const typeBadge = itemData.type === 'badge'
+      ? '<span style="background: rgba(241, 196, 15, 0.2); color: #f1c40f; padding: 1px 6px; border-radius: 3px; font-size: 10px; margin-left: 8px;">徽章</span>'
+      : '';
+    
     tooltip.innerHTML = `
       <div class="item-name ${rarityClass}">
-        ${itemData.icon} ${itemData.name}${enhanceLevel ? ` <span style="color:#f1c40f;">+${enhanceLevel}</span>` : ''}
+        ${itemData.icon} ${itemData.name}${enhanceLevel ? ` <span style="color:#f1c40f;">+${enhanceLevel}</span>` : ''}${typeBadge}
       </div>
       <div class="item-desc">${itemData.description}</div>
       ${itemData.stats ? `<div class="item-stats">${this.formatStats(itemData.stats, enhanceLevel)}</div>` : ''}
+      ${sourceInfo}
       ${itemData.price ? `<div style="margin-top: 8px; color: #f1c40f;">回收价: ${sellPrice} 金币${enhanceLevel ? ' <span style="color:#aaa;">(含强化)</span>' : ''}</div>` : ''}
       <div style="margin-top: 4px; color: #888; font-size: 11px;">
-        ${['weapon', 'armor', 'helmet', 'boots'].includes(itemData.type) ? '可强化 · 可出售' : (itemData.type === 'consumable' ? '可使用' : '')}
+        ${itemData.type === 'badge' ? '永久生效 · 不可出售' : (['weapon', 'armor', 'helmet', 'boots'].includes(itemData.type) ? '可强化 · 可出售' : (itemData.type === 'consumable' ? '可使用' : ''))}
       </div>
     `;
     
@@ -748,31 +768,75 @@ const UI = {
     }).join('');
     
     let nextStepHint = '';
-    if (Quests.activeQuests.length === 0 && Quests.availableQuests.length === 0) {
+    if (Quests.activeQuests.length === 0 && Quests.availableQuests.filter(id => Quests.canAccept(player, id)).length === 0) {
       const allQuestIds = Object.keys(GameData.quests);
       const completedIds = Object.keys(player.quests).filter(id => player.quests[id].completed);
-      const lastCompleted = completedIds[completedIds.length - 1];
+      const lastCompleted = completedIds.length > 0 ? completedIds[completedIds.length - 1] : null;
       const nextQuest = findNextQuest(lastCompleted);
+      
       if (nextQuest) {
+        const levelDiff = nextQuest.quest.level - player.level;
+        const canAccept = Quests.canAccept(player, nextQuest.id);
+        const region = GameData.regions[nextQuest.quest.region];
+        const levelRangeStr = region ? region.levelRange : '';
+        let levelUpHint = '';
+        
+        if (!canAccept && levelDiff > 0) {
+          let bestGrindRegion = null;
+          const playerLevel = player.level;
+          const allRegions = ['forest', 'mine', 'sky', 'tower'];
+          for (const rid of allRegions) {
+            const r = GameData.regions[rid];
+            if (!r) continue;
+            const [minL, maxL] = r.levelRange.split('-').map(Number);
+            if (playerLevel >= minL && playerLevel <= maxL) {
+              bestGrindRegion = { id: rid, region: r };
+              break;
+            }
+          }
+          if (!bestGrindRegion && nextQuest.quest.region) {
+            const nr = GameData.regions[nextQuest.quest.region];
+            if (nr) bestGrindRegion = { id: nextQuest.quest.region, region: nr };
+          }
+          
+          levelUpHint = `
+            <div style="margin-top: 10px; padding: 10px; background: rgba(231, 76, 60, 0.1); border-radius: 6px;">
+              <p style="color: #e74c3c; font-size: 12px; font-weight: bold;">⚠️ 等级不足</p>
+              <p style="color: rgba(200, 220, 255, 0.8); font-size: 11px; margin-top: 3px;">
+                还差 <strong style="color: #e74c3c;">${levelDiff}</strong> 级才能接取「${nextQuest.quest.name}」
+              </p>
+              ${bestGrindRegion ? `
+                <p style="color: rgba(200, 220, 255, 0.8); font-size: 11px; margin-top: 3px;">
+                  💡 推荐先去 <span style="color: ${bestGrindRegion.region.color};">${bestGrindRegion.region.name}</span> (Lv.${bestGrindRegion.region.levelRange}) 刷级
+                </p>
+              ` : ''}
+            </div>
+          `;
+        }
+        
         nextStepHint = `
-          <div style="padding: 15px; background: rgba(46, 204, 113, 0.1); border: 2px solid rgba(46, 204, 113, 0.3); border-radius: 8px; margin-bottom: 20px;">
-            <p style="color: #2ecc71; font-size: 13px; font-weight: bold;">✅ 当前所有任务已完成</p>
-            <p style="color: rgba(200, 220, 255, 0.7); font-size: 12px; margin-top: 5px;">
+          <div style="padding: 15px; background: rgba(52, 152, 219, 0.1); border: 2px solid rgba(52, 152, 219, 0.3); border-radius: 8px; margin-bottom: 20px;">
+            <p style="color: #3498db; font-size: 13px; font-weight: bold;">📌 下一步目标</p>
+            <p style="color: rgba(200, 220, 255, 0.9); font-size: 12px; margin-top: 5px;">
               下一个任务: <strong style="color: #4fc3f7;">${nextQuest.quest.name}</strong>
-              ${nextQuest.quest.level > player.level ? ` (需要等级 ${nextQuest.quest.level}，当前 ${player.level})` : ''}
-              ${nextQuest.quest.region ? `<br>📍 推荐前往: ${getRegionInfo(nextQuest.quest.region)}` : ''}
+              <span style="color: #888; margin-left: 8px;">(需要 Lv.${nextQuest.quest.level}${!canAccept ? `，当前 Lv.${player.level}` : ''})</span>
             </p>
+            ${nextQuest.quest.region ? `<p style="color: rgba(200, 220, 255, 0.8); font-size: 11px; margin-top: 3px;">📍 推荐前往: ${getRegionInfo(nextQuest.quest.region)} (Lv.${levelRangeStr})</p>` : ''}
+            ${levelUpHint}
           </div>
         `;
       } else {
-        nextStepHint = `
-          <div style="padding: 15px; background: rgba(241, 196, 15, 0.1); border: 2px solid rgba(241, 196, 15, 0.3); border-radius: 8px; margin-bottom: 20px;">
-            <p style="color: #f1c40f; font-size: 13px; font-weight: bold;">🎉 恭喜！你已完成所有主线任务</p>
-            <p style="color: rgba(200, 220, 255, 0.7); font-size: 12px; margin-top: 5px;">
-              可以前往训练场练习连招，或重游各区域收集怪物图鉴。
-            </p>
-          </div>
-        `;
+        const allCompleted = allQuestIds.every(id => player.quests[id] && player.quests[id].completed);
+        if (allCompleted) {
+          nextStepHint = `
+            <div style="padding: 15px; background: rgba(241, 196, 15, 0.1); border: 2px solid rgba(241, 196, 15, 0.3); border-radius: 8px; margin-bottom: 20px;">
+              <p style="color: #f1c40f; font-size: 13px; font-weight: bold;">🎉 恭喜！你已完成所有主线任务</p>
+              <p style="color: rgba(200, 220, 255, 0.7); font-size: 12px; margin-top: 5px;">
+                可以前往训练场练习连招，或重游各区域收集怪物图鉴。
+              </p>
+            </div>
+          `;
+        }
       }
     }
     
@@ -1238,31 +1302,66 @@ const UI = {
       left: 50%;
       transform: translate(-50%, -50%);
       padding: 25px;
-      width: 700px;
+      width: 750px;
+      max-height: 85vh;
+      overflow-y: auto;
       z-index: 150;
     `;
     
     const regions = ['town', 'forest', 'mine', 'sky', 'tower', 'training'];
     const currentRegion = MapManager.currentRegion ? MapManager.currentRegion.id : 'town';
     
+    const gradeColors = { S: '#f1c40f', A: '#e74c3c', B: '#3498db', C: '#2ecc71', D: '#95a5a6' };
+    
+    const formatTime = (ms) => {
+      if (!ms) return '--:--';
+      const m = Math.floor(ms / 60000);
+      const s = Math.floor((ms % 60000) / 1000);
+      return `${m}:${s.toString().padStart(2, '0')}`;
+    };
+    
+    const getBossRecord = (bossType) => {
+      return Game.player && Game.player.bossRecords && Game.player.bossRecords[bossType];
+    };
+    
     const mapHTML = regions.map(regionId => {
       const region = GameData.regions[regionId];
       const isCurrent = regionId === currentRegion;
       const isLocked = false;
       
-      const records = (Game.player && Game.player.regionRecords) ? Game.player.regionRecords[regionId] : null;
-      const gradeColors = { S: '#f1c40f', A: '#e74c3c', B: '#3498db', C: '#2ecc71', D: '#95a5a6' };
+      const bosses = [];
+      if (region.boss) bosses.push(region.boss);
+      if (region.boss2) bosses.push(region.boss2);
       
-      let bestTimeStr = '--:--';
-      if (records && records.bestTime) {
-        const m = Math.floor(records.bestTime / 60000);
-        const s = Math.floor((records.bestTime % 60000) / 1000);
-        bestTimeStr = `${m}:${s.toString().padStart(2, '0')}`;
-      }
+      const regionCleared = bosses.length > 0 ? bosses.every(b => getBossRecord(b)) : true;
       
-      const regionBosses = [];
-      if (region.boss) regionBosses.push(GameData.monsters[region.boss] ? GameData.monsters[region.boss].name : region.boss);
-      if (region.boss2) regionBosses.push(GameData.monsters[region.boss2] ? GameData.monsters[region.boss2].name : region.boss2);
+      const bossesHTML = bosses.map(bossType => {
+        const monster = GameData.monsters[bossType];
+        const record = getBossRecord(bossType);
+        const bossName = monster ? monster.name : bossType;
+        return `
+          <div style="padding: 8px 10px; background: rgba(0, 0, 0, 0.2); border-radius: 6px; margin: 5px 0;
+                      display: flex; align-items: center; gap: 10px; font-size: 11px; flex-wrap: wrap;">
+            <span style="color: ${record ? '#2ecc71' : '#e74c3c'};">
+              ${record ? '✅' : '⏳'}
+            </span>
+            <span style="color: #e74c3c; font-weight: bold;">👹 ${bossName}</span>
+            <span style="color: #888;">
+              评价:
+              <span style="color: ${record && record.bestGrade ? gradeColors[record.bestGrade] : '#555'}; font-weight: bold;">
+                ${record && record.bestGrade ? record.bestGrade : '—'}
+              </span>
+            </span>
+            <span style="color: #888;">
+              时间:
+              <span style="color: ${record && record.bestTime ? '#4fc3f7' : '#555'}; font-weight: bold;">
+                ${formatTime(record ? record.bestTime : null)}
+              </span>
+            </span>
+            ${record && record.killCount > 1 ? `<span style="color: #888;">击杀: ${record.killCount}次</span>` : ''}
+          </div>
+        `;
+      }).join('');
       
       return `
         <div style="padding: 15px; background: rgba(255, 255, 255, 0.03); border-radius: 8px; margin-bottom: 10px;
@@ -1270,39 +1369,25 @@ const UI = {
                     opacity: ${isLocked ? 0.5 : 1};">
           <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 15px;">
             <div style="display: flex; align-items: flex-start; gap: 15px; flex: 1;">
-              <div style="width: 50px; height: 50px; border-radius: 50%; background: ${region.color}; 
+              <div style="width: 50px; height: 50px; border-radius: 50%; background: ${region.color};
                           display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;">
                 ${regionId === 'town' ? '🏠' : regionId === 'forest' ? '🌲' : regionId === 'mine' ? '⛏️' : regionId === 'sky' ? '☁️' : regionId === 'tower' ? '🏰' : '🎯'}
               </div>
-              <div style="flex: 1;">
+              <div style="flex: 1; min-width: 0;">
                 <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                   <strong style="color: ${region.color}; font-size: 15px;">${region.name}</strong>
                   ${isCurrent ? '<span style="background: #2ecc71; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 10px;">当前</span>' : ''}
                   <span style="color: #888; font-size: 11px;">Lv.${region.levelRange}</span>
-                  ${records && records.cleared ? '<span style="background: rgba(46, 204, 113, 0.2); color: #2ecc71; padding: 2px 8px; border-radius: 4px; font-size: 10px;">✅ 已通关</span>' : (region.boss ? '<span style="background: rgba(231, 76, 60, 0.2); color: #e74c3c; padding: 2px 8px; border-radius: 4px; font-size: 10px;">未通关</span>' : '')}
+                  ${bosses.length > 0 ? (regionCleared
+                    ? '<span style="background: rgba(46, 204, 113, 0.2); color: #2ecc71; padding: 2px 8px; border-radius: 4px; font-size: 10px;">✅ 区域通关</span>'
+                    : '<span style="background: rgba(231, 76, 60, 0.2); color: #e74c3c; padding: 2px 8px; border-radius: 4px; font-size: 10px;">未通关</span>') : ''}
                 </div>
                 <p style="color: rgba(200, 220, 255, 0.7); font-size: 12px; margin: 5px 0;">${region.description}</p>
-                ${regionBosses.length > 0 ? `<p style="color: #e74c3c; font-size: 11px; margin-top: 3px;">👹 区域首领: ${regionBosses.join('、')}</p>` : ''}
-                ${regionId !== 'town' && regionId !== 'training' ? `
-                  <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 11px;">
-                    <div style="color: #888;">
-                      最高评价: 
-                      <span style="color: ${records && records.bestGrade ? gradeColors[records.bestGrade] : '#555'}; font-weight: bold;">
-                        ${records && records.bestGrade ? records.bestGrade : '—'}
-                      </span>
-                    </div>
-                    <div style="color: #888;">
-                      最快时间: 
-                      <span style="color: ${records && records.bestTime ? '#4fc3f7' : '#555'}; font-weight: bold;">
-                        ${bestTimeStr}
-                      </span>
-                    </div>
-                  </div>
-                ` : ''}
+                ${bosses.length > 0 ? `<div>${bossesHTML}</div>` : ''}
               </div>
             </div>
             ${!isCurrent && !isLocked ? `
-              <button class="ui-button" style="padding: 8px 16px; font-size: 12px; flex-shrink: 0;" 
+              <button class="ui-button" style="padding: 8px 16px; font-size: 12px; flex-shrink: 0;"
                       onclick="UI.teleportToRegion('${regionId}')">前往</button>
             ` : ''}
           </div>
@@ -1311,19 +1396,23 @@ const UI = {
     }).join('');
     
     panel.innerHTML = `
-      <h2 class="ui-title" style="font-size: 20px; margin-bottom: 20px;">🗺️ 世界地图</h2>
-      
+      <h2 class="ui-title" style="font-size: 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between;">
+        <span>🗺️ 世界地图</span>
+        <button class="ui-button" style="padding: 6px 14px; font-size: 12px;" onclick="UI.showCharacterProfile()">📋 查看档案</button>
+      </h2>
+
       <div style="margin-bottom: 15px;">
         ${mapHTML}
       </div>
-      
+
       <div style="padding: 15px; background: rgba(0, 0, 0, 0.3); border-radius: 8px;">
         <p style="color: rgba(200, 220, 255, 0.7); font-size: 12px; line-height: 1.6;">
-          💡 提示：击败区域首领后才能前往下一个区域。训练场可以无限练习连招。
+          💡 提示：击败区域首领后才能前往下一个区域。双首领区域需要击败所有首领才算通关。
         </p>
       </div>
-      
-      <div style="margin-top: 20px; text-align: right;">
+
+      <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+        <button class="ui-button" onclick="UI.showCharacterProfile()">📋 角色档案</button>
         <button class="ui-button secondary" onclick="UI.closePanel()">关闭 (ESC)</button>
       </div>
     `;
@@ -1437,10 +1526,222 @@ const UI = {
     this.currentPanel = 'codex';
   },
 
+  showCharacterProfile() {
+    this.clearUI();
+    if (!Game.player) return;
+
+    const panel = document.createElement('div');
+    panel.className = 'ui-panel';
+    panel.style.cssText = `
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 25px;
+      width: 750px;
+      max-height: 85vh;
+      overflow-y: auto;
+      z-index: 150;
+    `;
+
+    const player = Game.player;
+    const gradeColors = { S: '#f1c40f', A: '#e74c3c', B: '#3498db', C: '#2ecc71', D: '#95a5a6' };
+
+    const formatTime = (ms) => {
+      if (!ms) return '--:--';
+      const m = Math.floor(ms / 60000);
+      const s = Math.floor((ms % 60000) / 1000);
+      return `${m}:${s.toString().padStart(2, '0')}`;
+    };
+
+    const formatDate = (timestamp) => {
+      if (!timestamp) return '—';
+      const d = new Date(timestamp);
+      return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
+    };
+
+    const allBosses = ['mushroom_king', 'spider_queen', 'stone_giant', 'sky_dragon', 'mecha_boss'];
+    const bossRegionMap = {
+      mushroom_king: 'forest',
+      spider_queen: 'mine',
+      stone_giant: 'sky',
+      sky_dragon: 'tower',
+      mecha_boss: 'tower'
+    };
+
+    const totalBossKills = allBosses.reduce((sum, b) => {
+      const rec = player.bossRecords && player.bossRecords[b];
+      return sum + (rec ? rec.killCount : 0);
+    }, 0);
+
+    const totalCleared = allBosses.filter(b => player.bossRecords && player.bossRecords[b]).length;
+
+    const badges = player.inventory.filter(item => {
+      const data = GameData.items[item.itemId];
+      return data && data.type === 'badge';
+    });
+
+    const bossRows = allBosses.map(bossType => {
+      const monster = GameData.monsters[bossType];
+      const region = GameData.regions[bossRegionMap[bossType]];
+      const record = player.bossRecords && player.bossRecords[bossType];
+      const bossName = monster ? monster.name : bossType;
+      const regionName = region ? region.name : '—';
+      const regionColor = region ? region.color : '#888';
+      const badgeId = `badge_${bossType}`;
+      const hasBadge = player.hasItem(badgeId);
+      const badgeData = GameData.items[badgeId];
+
+      return `
+        <div style="padding: 12px; background: rgba(255, 255, 255, 0.03); border-radius: 8px; margin-bottom: 8px;
+                    display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 20px;">
+            ${record ? '✅' : '🔒'}
+          </span>
+          <div style="flex: 1; min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <strong style="color: #e74c3c;">👹 ${bossName}</strong>
+              <span style="color: ${regionColor}; font-size: 11px;">📍 ${regionName}</span>
+              ${hasBadge && badgeData ? `<span style="background: rgba(241, 196, 15, 0.2); color: #f1c40f; padding: 1px 6px; border-radius: 3px; font-size: 10px;">🏅 ${badgeData.icon} ${badgeData.name}</span>` : ''}
+            </div>
+            ${record ? `
+              <div style="display: flex; gap: 18px; margin-top: 5px; font-size: 11px; color: #888; flex-wrap: wrap;">
+                <span>评价: <strong style="color: ${gradeColors[record.bestGrade]};">${record.bestGrade}</strong></span>
+                <span>最快: <strong style="color: #4fc3f7;">${formatTime(record.bestTime)}</strong></span>
+                <span>击杀: <strong style="color: #ecf0f1;">${record.killCount} 次</strong></span>
+                <span>首杀: <strong style="color: #bdc3c7;">${formatDate(record.firstKill)}</strong></span>
+              </div>
+            ` : `
+              <div style="color: #666; font-size: 11px; margin-top: 5px;">尚未击败</div>
+            `}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const stats = player.getStats();
+    const statLabels = {
+      atk: '攻击', def: '防御', hp: '生命', mp: '魔力',
+      spd: '速度', crit: '暴击率', critDamage: '暴击伤害',
+      lifesteal: '生命偷取', evasion: '闪避率',
+      expBonus: '经验加成', goldBonus: '金币加成'
+    };
+
+    const statsHTML = Object.keys(statLabels).map(key => {
+      if (stats[key] === undefined || stats[key] === null) return '';
+      let value = stats[key];
+      let suffix = '';
+      if (key === 'crit' || key === 'evasion' || key === 'lifesteal') {
+        value = (value * 100).toFixed(0);
+        suffix = '%';
+      }
+      if (key === 'critDamage') {
+        value = (value * 100).toFixed(0);
+        suffix = '%';
+      }
+      if (key === 'expBonus' || key === 'goldBonus') {
+        if (value === 1 || value === undefined) return '';
+        value = ((value - 1) * 100).toFixed(0);
+        suffix = '%';
+      }
+      return `<div style="flex: 1; min-width: 80px; padding: 8px; background: rgba(0, 0, 0, 0.2); border-radius: 6px; text-align: center;">
+        <div style="color: #888; font-size: 10px;">${statLabels[key]}</div>
+        <div style="color: #ecf0f1; font-size: 14px; font-weight: bold;">${value}${suffix}</div>
+      </div>`;
+    }).filter(h => h).join('');
+
+    const badgesHTML = badges.length > 0 ? badges.map(item => {
+      const data = GameData.items[item.itemId];
+      const statText = data.stats ? Object.keys(data.stats).map(k => {
+        let v = data.stats[k];
+        if (v > 1 && k !== 'crit' && k !== 'lifesteal' && k !== 'critDamage') {
+          return `+${((v - 1) * 100).toFixed(0)}% ${statLabels[k] || k}`;
+        }
+        return `+${v} ${statLabels[k] || k}`;
+      }).join(' ') : '';
+      return `
+        <div style="flex: 1; min-width: 150px; padding: 10px; background: rgba(241, 196, 15, 0.08); 
+                    border: 1px solid rgba(241, 196, 15, 0.3); border-radius: 6px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 20px;">${data.icon}</span>
+            <div>
+              <div style="color: #f1c40f; font-weight: bold; font-size: 12px;">${data.name}</div>
+              <div style="color: #888; font-size: 10px;">${data.source}</div>
+            </div>
+          </div>
+          ${statText ? `<div style="color: #2ecc71; font-size: 11px; margin-top: 5px;">${statText}</div>` : ''}
+        </div>
+      `;
+    }).join('') : '<div style="color: #666; font-size: 12px; padding: 10px;">还没有获得任何首领徽章，去击败区域首领吧！</div>';
+
+    panel.innerHTML = `
+      <h2 class="ui-title" style="font-size: 20px; margin-bottom: 20px;">📋 角色档案</h2>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+        <div style="padding: 15px; background: rgba(0, 0, 0, 0.2); border-radius: 8px;">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+            <div style="width: 50px; height: 50px; border-radius: 50%; background: #3498db;
+                        display: flex; align-items: center; justify-content: center; font-size: 24px;">
+              ⚔️
+            </div>
+            <div>
+              <div style="font-size: 16px; font-weight: bold;">${player.name}</div>
+              <div style="color: #888; font-size: 12px;">Lv.${player.level} ${player.subClassId || player.classId}</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 10px; font-size: 11px; color: #888;">
+            <span>👑 金币: <strong style="color: #f1c40f;">${player.gold}</strong></span>
+            <span>💰 累计收入: <strong style="color: #f1c40f;">${player.totalGoldEarned || 0}</strong></span>
+          </div>
+        </div>
+
+        <div style="padding: 15px; background: rgba(0, 0, 0, 0.2); border-radius: 8px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; text-align: center;">
+            <div>
+              <div style="color: #e74c3c; font-size: 20px; font-weight: bold;">${totalCleared}/${allBosses.length}</div>
+              <div style="color: #888; font-size: 11px;">首领通关</div>
+            </div>
+            <div>
+              <div style="color: #f1c40f; font-size: 20px; font-weight: bold;">${totalBossKills}</div>
+              <div style="color: #888; font-size: 11px;">首领总击杀</div>
+            </div>
+            <div>
+              <div style="color: #3498db; font-size: 20px; font-weight: bold;">${player.totalKills || 0}</div>
+              <div style="color: #888; font-size: 11px;">累计击杀</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h3 style="color: #3498db; margin: 15px 0 10px; font-size: 14px;">⚔️ 当前属性</h3>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;">
+        ${statsHTML}
+      </div>
+
+      <h3 style="color: #e74c3c; margin: 15px 0 10px; font-size: 14px;">🏆 首领挑战记录</h3>
+      <div style="margin-bottom: 20px;">
+        ${bossRows}
+      </div>
+
+      <h3 style="color: #f1c40f; margin: 15px 0 10px; font-size: 14px;">🏅 首领徽章收藏 (${badges.length}/5)</h3>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
+        ${badgesHTML}
+      </div>
+
+      <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+        <button class="ui-button" onclick="UI.showMap()">🗺️ 查看地图</button>
+        <button class="ui-button secondary" onclick="UI.closePanel()">关闭 (ESC)</button>
+      </div>
+    `;
+
+    this.uiLayer.appendChild(panel);
+    this.currentPanel = 'profile';
+  },
+
   showLevelResult(report) {
     this.clearUI();
     Game.paused = true;
-    
+
     const { victory, clearTime, maxCombo, monstersKilled, itemsPickedUp, goldChange, expGained, grade, regionId } = report;
     const region = MapManager.currentRegion;
     
@@ -1480,7 +1781,16 @@ const UI = {
     `).join('') : '<p style="color: #666; text-align: center; padding: 15px; font-size: 12px;">本关未击败任何怪物</p>';
     
     const itemsArr = Object.entries(itemsPickedUp || {});
-    const itemsHTML = itemsArr.length > 0 ? itemsArr.map(([itemId, count]) => {
+    const regularItems = itemsArr.filter(([itemId]) => {
+      const data = GameData.items[itemId];
+      return data && data.type !== 'badge';
+    });
+    const badgeItems = itemsArr.filter(([itemId]) => {
+      const data = GameData.items[itemId];
+      return data && data.type === 'badge';
+    });
+    
+    const regularItemsHTML = regularItems.length > 0 ? regularItems.map(([itemId, count]) => {
       const itemData = GameData.items[itemId];
       if (!itemData) return '';
       const rarityColor = getRarityColor(itemData.rarity);
@@ -1493,6 +1803,36 @@ const UI = {
         </div>
       `;
     }).join('') : '<p style="color: #666; text-align: center; padding: 15px; font-size: 12px;">本关未获得物品</p>';
+    
+    const badgesHTML = badgeItems.length > 0 ? `
+      <div style="margin-top: 15px; padding: 12px; background: rgba(241, 196, 15, 0.08); 
+                  border: 2px solid rgba(241, 196, 15, 0.4); border-radius: 8px;">
+        <h4 style="color: #f1c40f; margin: 0 0 8px; font-size: 13px;">🏅 获得首领徽章！</h4>
+        ${badgeItems.map(([itemId, count]) => {
+          const itemData = GameData.items[itemId];
+          if (!itemData) return '';
+          const statText = itemData.stats ? Object.keys(itemData.stats).map(k => {
+            const statNames = { atk: '攻击', def: '防御', hp: '生命', mp: '魔力', spd: '速度', expBonus: '经验加成', goldBonus: '金币加成' };
+            let v = itemData.stats[k];
+            if (v > 1 && k !== 'crit' && k !== 'lifesteal' && k !== 'critDamage') {
+              return `+${((v - 1) * 100).toFixed(0)}% ${statNames[k] || k}`;
+            }
+            return `+${v} ${statNames[k] || k}`;
+          }).join(' ') : '';
+          return `
+            <div style="display: flex; align-items: center; gap: 10px; padding: 6px 10px;
+                        background: rgba(0, 0, 0, 0.2); border-radius: 6px; margin-bottom: 4px;">
+              <span style="font-size: 20px;">${itemData.icon}</span>
+              <div style="flex: 1;">
+                <div style="color: #f1c40f; font-weight: bold; font-size: 13px;">${itemData.name}</div>
+                ${statText ? `<div style="color: #2ecc71; font-size: 11px;">${statText}</div>` : ''}
+                ${itemData.source ? `<div style="color: #888; font-size: 10px;">来源: ${itemData.source}</div>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    ` : '';
     
     panel.innerHTML = `
       <div style="text-align: center; margin-bottom: 20px;">
@@ -1540,8 +1880,9 @@ const UI = {
         <div>
           <h3 style="color: #4fc3f7; margin-bottom: 8px; font-size: 13px;">📦 获得物品 (已进背包)</h3>
           <div style="max-height: 160px; overflow-y: auto; padding-right: 4px;">
-            ${itemsHTML}
+            ${regularItemsHTML}
           </div>
+          ${badgesHTML}
         </div>
       </div>
       
@@ -1550,14 +1891,16 @@ const UI = {
           ${victory ? `✅ 已击败区域首领，可以前往下一区域了！` : `💡 可以继续挑战或返回城镇休整。`}
         </p>
       </div>
-      
-      <div style="display: flex; gap: 12px; justify-content: center;">
+
+      <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
         <button class="ui-button" onclick="UI.returnToTown()">返回城镇</button>
+        <button class="ui-button" onclick="UI.showCharacterProfile()">📋 查看档案</button>
         ${victory ? `
           <button class="ui-button secondary" onclick="UI.continueExploring()">继续探索</button>
         ` : `
           <button class="ui-button secondary" onclick="UI.retryLevel()">重新挑战</button>
         `}
+        <button class="ui-button secondary" onclick="UI.retryLevel()">🔄 再挑战一次</button>
       </div>
     `;
     

@@ -276,14 +276,22 @@ const Game = {
     }
     
     if (monster.isBoss) {
+      const clearTime = Date.now() - this.levelStartTime;
+      const maxCombo = this.player.maxCombo;
+      const grade = UI.calculateGrade(clearTime, maxCombo);
+      this.recordBossKill(monster.type, clearTime, grade);
+      
       if (MapManager.currentRegion && MapManager.currentRegion.boss2 && !MapManager.bossDefeated) {
         MapManager.bossDefeated = true;
         showNotification('第一首领已击败！继续深入挑战第二首领！', 'success');
+        this.awardBossBadge(monster.type);
       } else if (MapManager.currentRegion && MapManager.currentRegion.boss2 && MapManager.bossDefeated && !MapManager.boss2Defeated) {
         MapManager.boss2Defeated = true;
+        this.awardBossBadge(monster.type);
         this.endLevel(true);
       } else {
         MapManager.bossDefeated = true;
+        this.awardBossBadge(monster.type);
         this.endLevel(true);
       }
     }
@@ -422,6 +430,14 @@ const Game = {
       }
     }
     
+    if (Input.isKeyPressed('KeyF')) {
+      if (UI.currentPanel === 'profile') {
+        UI.closePanel();
+      } else {
+        UI.showCharacterProfile();
+      }
+    }
+    
     if (Input.isEscapePressed()) {
       if (UI.currentPanel && UI.currentPanel !== 'main_menu') {
         UI.closePanel();
@@ -520,10 +536,6 @@ const Game = {
     const regionId = MapManager.currentRegion ? MapManager.currentRegion.id : '';
     const grade = victory ? UI.calculateGrade(clearTime, maxCombo) : null;
     
-    if (victory && regionId && regionId !== 'training') {
-      this.recordRegionClear(regionId, clearTime, grade);
-    }
-    
     UI.showLevelResult({
       victory,
       clearTime,
@@ -548,29 +560,69 @@ const Game = {
     this.saveGame();
   },
 
-  recordRegionClear(regionId, clearTime, grade) {
-    if (!this.player.regionRecords) {
-      this.player.regionRecords = {};
+  recordBossKill(bossType, clearTime, grade) {
+    if (!this.player.bossRecords) {
+      this.player.bossRecords = {};
     }
     
     const gradeOrder = { S: 5, A: 4, B: 3, C: 2, D: 1 };
     
-    if (!this.player.regionRecords[regionId]) {
-      this.player.regionRecords[regionId] = {
-        cleared: true,
+    if (!this.player.bossRecords[bossType]) {
+      this.player.bossRecords[bossType] = {
+        killed: true,
+        killCount: 1,
         bestGrade: grade,
-        bestTime: clearTime
+        bestTime: clearTime,
+        firstKill: Date.now()
       };
     } else {
-      this.player.regionRecords[regionId].cleared = true;
-      const oldBest = this.player.regionRecords[regionId].bestGrade;
+      const rec = this.player.bossRecords[bossType];
+      rec.killCount++;
+      const oldBest = rec.bestGrade;
       if (!oldBest || gradeOrder[grade] > gradeOrder[oldBest]) {
-        this.player.regionRecords[regionId].bestGrade = grade;
+        rec.bestGrade = grade;
       }
-      if (clearTime < this.player.regionRecords[regionId].bestTime) {
-        this.player.regionRecords[regionId].bestTime = clearTime;
+      if (clearTime < rec.bestTime) {
+        rec.bestTime = clearTime;
       }
     }
+    
+    if (!this.player.totalKills) this.player.totalKills = 0;
+    this.player.totalKills++;
+  },
+
+  awardBossBadge(bossType) {
+    const badgeId = `badge_${bossType}`;
+    if (GameData.items[badgeId] && !this.player.hasItem(badgeId)) {
+      this.player.addItem(badgeId);
+      showNotification(`🏅 获得首领徽章：${GameData.items[badgeId].name}！`, 'success');
+    }
+  },
+
+  isRegionCleared(regionId) {
+    const region = GameData.regions[regionId];
+    if (!region || !region.boss) return true;
+    
+    const boss1Defeated = this.player.bossRecords && this.player.bossRecords[region.boss];
+    if (!region.boss2) {
+      return !!boss1Defeated;
+    }
+    
+    const boss2Defeated = this.player.bossRecords && this.player.bossRecords[region.boss2];
+    return !!boss1Defeated && !!boss2Defeated;
+  },
+
+  isBossDefeated(bossType) {
+    return !!(this.player.bossRecords && this.player.bossRecords[bossType]);
+  },
+
+  getRegionBosses(regionId) {
+    const region = GameData.regions[regionId];
+    if (!region) return [];
+    const bosses = [];
+    if (region.boss) bosses.push(region.boss);
+    if (region.boss2) bosses.push(region.boss2);
+    return bosses;
   },
   
   startNewGame(playerName, classId, subClassId) {
@@ -619,7 +671,10 @@ const Game = {
         inventory: this.player.inventory,
         quests: this.player.quests,
         monsterCodex: this.player.monsterCodex,
-        skills: this.player.skills
+        skills: this.player.skills,
+        bossRecords: this.player.bossRecords,
+        totalKills: this.player.totalKills,
+        totalGoldEarned: this.player.totalGoldEarned
       },
       currentRegion: MapManager.currentRegion ? MapManager.currentRegion.id : 'town',
       timestamp: Date.now()
@@ -654,6 +709,9 @@ const Game = {
     this.player.quests = p.quests;
     this.player.monsterCodex = p.monsterCodex;
     this.player.skills = p.skills;
+    this.player.bossRecords = p.bossRecords || {};
+    this.player.totalKills = p.totalKills || 0;
+    this.player.totalGoldEarned = p.totalGoldEarned || 0;
     
     this.state = 'playing';
     MapManager.loadRegion(saveData.currentRegion || 'town');

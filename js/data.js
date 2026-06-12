@@ -198,7 +198,12 @@ const GameData = {
     leather_boots: { name: '皮靴', type: 'boots', description: '皮革制作的靴子', color: '#6d4c41', icon: '👢', price: 150, stats: { spd: 2, def: 2 }, rarity: 'common' },
     rare_boots: { name: '疾风之靴', type: 'boots', description: '增加移动速度的魔法靴', color: '#4fc3f7', icon: '👢', price: 1000, stats: { spd: 5, def: 5, hp: 30 }, rarity: 'epic' },
     hidden_key: { name: '隐藏宝箱钥匙', type: 'key', description: '可以打开隐藏宝箱', color: '#f39c12', icon: '🗝', price: 0 },
-    teleport_scroll: { name: '传送卷轴', type: 'consumable', description: '返回城镇', color: '#9b59b6', icon: '📜', price: 50, effect: { teleport: 'town' } }
+    teleport_scroll: { name: '传送卷轴', type: 'consumable', description: '返回城镇', color: '#9b59b6', icon: '📜', price: 50, effect: { teleport: 'town' } },
+    badge_mushroom_king: { name: '蘑菇王徽章', type: 'badge', description: '击败蘑菇王获得。永久 +2 攻击', color: '#27ae60', icon: '🍄', price: 0, stats: { atk: 2 }, source: '蘑菇森林·蘑菇王' },
+    badge_spider_queen: { name: '蜘蛛女王徽章', type: 'badge', description: '击败蜘蛛女王获得。永久 +3 防御', color: '#8e44ad', icon: '🕷️', price: 0, stats: { def: 3 }, source: '废弃矿洞·蜘蛛女王' },
+    badge_stone_giant: { name: '石巨人徽章', type: 'badge', description: '击败石巨人获得。永久 +50 生命上限', color: '#795548', icon: '🗿', price: 0, stats: { maxHp: 50 }, source: '天空栈道·石巨人' },
+    badge_sky_dragon: { name: '天空龙徽章', type: 'badge', description: '击败天空龙获得。永久 5% 金币加成', color: '#00bcd4', icon: '🐉', price: 0, stats: { goldBonus: 1.05 }, source: '机械塔·天空龙' },
+    badge_mecha_boss: { name: '机甲巨兽徽章', type: 'badge', description: '击败机甲巨兽获得。永久 5% 经验加成', color: '#ff5722', icon: '🤖', price: 0, stats: { expBonus: 1.05 }, source: '机械塔·机甲巨兽' }
   },
 
   regions: {

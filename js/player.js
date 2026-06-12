@@ -109,6 +109,20 @@ class Player {
       if (buff.evasion) stats.evasion = (stats.evasion || 0) + buff.evasion;
     }
     
+    for (const item of this.inventory) {
+      const itemData = GameData.items[item.itemId];
+      if (itemData && itemData.type === 'badge' && itemData.stats) {
+        for (const stat in itemData.stats) {
+          const value = itemData.stats[stat];
+          if (typeof value === 'number' && value > 1 && stat !== 'crit' && stat !== 'lifesteal' && stat !== 'critDamage') {
+            stats[stat] = (stats[stat] || 0) * value;
+          } else {
+            stats[stat] = (stats[stat] || 0) + value;
+          }
+        }
+      }
+    }
+    
     stats.hp = this.maxHP;
     stats.mp = this.maxMP;
     
@@ -462,6 +476,8 @@ class Player {
     const bonus = stats.goldBonus || 1;
     const actualGold = Math.floor(amount * bonus);
     this.gold += actualGold;
+    if (!this.totalGoldEarned) this.totalGoldEarned = 0;
+    this.totalGoldEarned += actualGold;
     createFloatingText(this.x + this.width / 2, this.y, `+${actualGold} 金币`, '#f1c40f');
   }
   

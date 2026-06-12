@@ -89,7 +89,7 @@ const Input = {
   },
 
   isInteractPressed() {
-    return this.isKeyPressed('KeyE') || this.isKeyPressed('KeyF');
+    return this.isKeyPressed('KeyE');
   },
 
   isInventoryPressed() {
