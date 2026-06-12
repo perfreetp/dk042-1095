@@ -84,7 +84,7 @@ const Input = {
     if (this.isKeyPressed('KeyU') || this.isKeyPressed('KeyX')) return 0;
     if (this.isKeyPressed('KeyI') || this.isKeyPressed('KeyC')) return 1;
     if (this.isKeyPressed('KeyO') || this.isKeyPressed('KeyV')) return 2;
-    if (this.isKeyPressed('KeyP') || this.isKeyPressed('KeyB')) return 3;
+    if (this.isKeyPressed('KeyP') || this.isKeyPressed('KeyG')) return 3;
     return -1;
   },
 

@@ -592,4 +592,12 @@ class Player {
   getRect() {
     return { x: this.x, y: this.y, width: this.width, height: this.height };
   }
+
+  getTotalExp() {
+    let total = this.exp;
+    for (let i = 1; i < this.level; i++) {
+      total += getExpForLevel(i);
+    }
+    return total;
+  }
 }

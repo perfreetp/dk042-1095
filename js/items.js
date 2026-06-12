@@ -50,9 +50,13 @@ const ItemManager = {
       
       if (dist < 30) {
         if (drop.type === 'gold') {
-          player.gainGold(10 * drop.count);
+          const goldAmount = 10 * drop.count;
+          player.gainGold(goldAmount);
+          Game.recordGoldPickup(goldAmount);
+          Game.recordItemPickup('gold', drop.count);
         } else {
           player.addItem(drop.type, drop.count);
+          Game.recordItemPickup(drop.type, drop.count);
         }
         return false;
       }

@@ -10,6 +10,12 @@ const Game = {
   
   levelStartTime: 0,
   levelDrops: [],
+  levelStartGold: 0,
+  levelStartTotalExp: 0,
+  levelMonstersKilled: {},
+  levelItemsPickedUp: {},
+  levelGoldPickedUp: 0,
+  levelExpGained: 0,
   paused: false,
   
   init() {
@@ -234,6 +240,7 @@ const Game = {
   onMonsterDeath(monster) {
     this.player.discoverMonster(monster.type);
     Quests.checkKill(this.player, monster.type);
+    this.recordMonsterKill(monster);
     
     const stats = this.player.getStats();
     const goldBonus = stats.goldBonus || 1;
@@ -251,6 +258,7 @@ const Game = {
     
     if (expDrop > 0) {
       this.player.gainExp(expDrop);
+      this.recordExpGained(expDrop);
     }
     
     for (const drop of monster.data.drops) {
@@ -348,9 +356,12 @@ const Game = {
       if (item === 'gold') {
         const amount = Math.floor(randomRange(50, 200));
         this.player.gainGold(amount);
+        this.recordGoldPickup(amount);
+        this.recordItemPickup('gold', 1);
         chestDrops.push('gold');
       } else {
         this.player.addItem(item);
+        this.recordItemPickup(item, 1);
         chestDrops.push(item);
       }
     }
@@ -462,15 +473,70 @@ const Game = {
   startLevel() {
     this.levelStartTime = Date.now();
     this.levelDrops = [];
+    this.levelStartGold = this.player ? this.player.gold : 0;
+    this.levelStartTotalExp = this.player ? this.player.getTotalExp() : 0;
+    this.levelMonstersKilled = {};
+    this.levelItemsPickedUp = {};
+    this.levelGoldPickedUp = 0;
+    this.levelExpGained = 0;
     this.player.comboCount = 0;
     this.player.maxCombo = 0;
   },
-  
+
+  recordMonsterKill(monster) {
+    const type = monster.type;
+    if (!this.levelMonstersKilled[type]) {
+      this.levelMonstersKilled[type] = {
+        name: monster.data.name,
+        color: monster.data.color,
+        isBoss: monster.isBoss,
+        count: 0
+      };
+    }
+    this.levelMonstersKilled[type].count++;
+  },
+
+  recordExpGained(amount) {
+    this.levelExpGained += amount;
+  },
+
+  recordItemPickup(itemId, count = 1) {
+    if (!this.levelItemsPickedUp[itemId]) {
+      this.levelItemsPickedUp[itemId] = 0;
+    }
+    this.levelItemsPickedUp[itemId] += count;
+  },
+
+  recordGoldPickup(amount) {
+    this.levelGoldPickedUp += amount;
+  },
+
   endLevel(victory) {
     const clearTime = Date.now() - this.levelStartTime;
     const maxCombo = this.player.maxCombo;
+    const goldChange = this.player.gold - this.levelStartGold;
+    const expChange = this.player.getTotalExp() - this.levelStartTotalExp;
     
-    UI.showLevelResult(victory, clearTime, maxCombo, this.levelDrops);
+    const regionId = MapManager.currentRegion ? MapManager.currentRegion.id : '';
+    const grade = victory ? UI.calculateGrade(clearTime, maxCombo) : null;
+    
+    if (victory && regionId && regionId !== 'training') {
+      this.recordRegionClear(regionId, clearTime, grade);
+    }
+    
+    UI.showLevelResult({
+      victory,
+      clearTime,
+      maxCombo,
+      drops: this.levelDrops,
+      monstersKilled: this.levelMonstersKilled,
+      itemsPickedUp: this.levelItemsPickedUp,
+      goldPickedUp: this.levelGoldPickedUp,
+      goldChange,
+      expGained: expChange > 0 ? expChange : this.levelExpGained,
+      grade,
+      regionId
+    });
     
     if (victory) {
       const region = MapManager.currentRegion;
@@ -480,6 +546,31 @@ const Game = {
     }
     
     this.saveGame();
+  },
+
+  recordRegionClear(regionId, clearTime, grade) {
+    if (!this.player.regionRecords) {
+      this.player.regionRecords = {};
+    }
+    
+    const gradeOrder = { S: 5, A: 4, B: 3, C: 2, D: 1 };
+    
+    if (!this.player.regionRecords[regionId]) {
+      this.player.regionRecords[regionId] = {
+        cleared: true,
+        bestGrade: grade,
+        bestTime: clearTime
+      };
+    } else {
+      this.player.regionRecords[regionId].cleared = true;
+      const oldBest = this.player.regionRecords[regionId].bestGrade;
+      if (!oldBest || gradeOrder[grade] > gradeOrder[oldBest]) {
+        this.player.regionRecords[regionId].bestGrade = grade;
+      }
+      if (clearTime < this.player.regionRecords[regionId].bestTime) {
+        this.player.regionRecords[regionId].bestTime = clearTime;
+      }
+    }
   },
   
   startNewGame(playerName, classId, subClassId) {

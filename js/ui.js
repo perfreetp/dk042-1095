@@ -89,7 +89,7 @@ const UI = {
           <p style="font-size: 13px; margin: 5px 0;">U / X：技能1</p>
           <p style="font-size: 13px; margin: 5px 0;">I / C：技能2</p>
           <p style="font-size: 13px; margin: 5px 0;">O / V：技能3</p>
-          <p style="font-size: 13px; margin: 5px 0;">P / B：技能4</p>
+          <p style="font-size: 13px; margin: 5px 0;">P / G：技能4</p>
         </div>
         <div>
           <h3 style="color: #4fc3f7; margin-bottom: 10px; font-size: 14px;">交互控制</h3>
@@ -552,13 +552,26 @@ const UI = {
     itemActions.style.display = 'block';
     
     const rarityColor = getRarityColor(itemData.rarity);
+    const sellPrice = Shop.getSellPrice(item);
+    
+    let enhanceInfo = '';
+    if (item.enhanceLevel && itemData.stats) {
+      const mainStat = itemData.type === 'weapon' ? 'atk' : 'def';
+      const baseVal = itemData.stats[mainStat] || 0;
+      const bonus = Math.floor(baseVal * 0.15 * item.enhanceLevel);
+      const statName = mainStat === 'atk' ? '攻击' : '防御';
+      enhanceInfo = `<p style="color: #f1c40f; margin-top: 3px;">⚡ 强化 +${item.enhanceLevel}: ${statName} +${bonus}</p>`;
+    }
+    
     itemInfo.innerHTML = `
       <span style="color: ${rarityColor}; font-weight: bold; font-size: 15px;">
-        ${itemData.name}${item.enhanceLevel ? ` +${item.enhanceLevel}` : ''}
+        ${itemData.icon} ${itemData.name}${item.enhanceLevel ? ` <span style="color:#f1c40f;">+${item.enhanceLevel}</span>` : ''}
       </span>
       <span style="color: #f1c40f; margin-left: 10px;">x${item.count}</span>
       <p style="color: rgba(200, 220, 255, 0.8); margin-top: 5px;">${itemData.description}</p>
       ${itemData.stats ? `<p style="color: #2ecc71; margin-top: 5px;">${this.formatStats(itemData.stats, item.enhanceLevel)}</p>` : ''}
+      ${enhanceInfo}
+      ${itemData.price ? `<p style="color: #f1c40f; margin-top: 5px;">💰 回收价: ${sellPrice} 金币${item.enhanceLevel ? ' (含强化)' : ''}</p>` : ''}
     `;
     
     let buttons = '';
@@ -621,10 +634,16 @@ const UI = {
         spd: '速度', crit: '暴击率'
       };
       let value = stats[stat];
+      let enhanceBonus = 0;
       if (enhanceLevel) {
-        value += Math.floor((stats.atk || stats.def || 0) * 0.15 * enhanceLevel);
+        enhanceBonus = Math.floor((stats.atk || stats.def || 0) * 0.15 * enhanceLevel);
+        value += enhanceBonus;
       }
-      parts.push(`${statNames[stat] || stat} +${value}${stat === 'crit' ? '%' : ''}`);
+      let text = `${statNames[stat] || stat} +${value}${stat === 'crit' ? '%' : ''}`;
+      if (enhanceBonus > 0) {
+        text = `${statNames[stat] || stat} +${stats[stat]}${stat === 'crit' ? '%' : ''} <span style="color:#f1c40f;">(+${enhanceBonus} 强化)</span>`;
+      }
+      parts.push(text);
     }
     return parts.join('，');
   },
@@ -639,13 +658,19 @@ const UI = {
     
     const rarityClass = getRarityClass(itemData.rarity);
     
+    const tempItem = { itemId, count: 1, enhanceLevel };
+    const sellPrice = Shop.getSellPrice(tempItem);
+    
     tooltip.innerHTML = `
       <div class="item-name ${rarityClass}">
-        ${itemData.name}${enhanceLevel ? ` +${enhanceLevel}` : ''}
+        ${itemData.icon} ${itemData.name}${enhanceLevel ? ` <span style="color:#f1c40f;">+${enhanceLevel}</span>` : ''}
       </div>
       <div class="item-desc">${itemData.description}</div>
       ${itemData.stats ? `<div class="item-stats">${this.formatStats(itemData.stats, enhanceLevel)}</div>` : ''}
-      ${itemData.price ? `<div style="margin-top: 8px; color: #f1c40f;">售价: ${Math.floor(itemData.price * 0.5)} 金币</div>` : ''}
+      ${itemData.price ? `<div style="margin-top: 8px; color: #f1c40f;">回收价: ${sellPrice} 金币${enhanceLevel ? ' <span style="color:#aaa;">(含强化)</span>' : ''}</div>` : ''}
+      <div style="margin-top: 4px; color: #888; font-size: 11px;">
+        ${['weapon', 'armor', 'helmet', 'boots'].includes(itemData.type) ? '可强化 · 可出售' : (itemData.type === 'consumable' ? '可使用' : '')}
+      </div>
     `;
     
     tooltip.style.left = `${event.clientX + 15}px`;
@@ -679,68 +704,139 @@ const UI = {
     const player = Game.player;
     Quests.loadForPlayer(player);
     
+    const getRegionInfo = (regionId) => {
+      const region = GameData.regions[regionId];
+      if (!region) return '';
+      const icons = { town: '🏠', forest: '🌲', mine: '⛏️', sky: '☁️', tower: '🏰', training: '🎯' };
+      return `<span style="color:${region.color};">${icons[regionId] || ''} ${region.name}</span>`;
+    };
+    
+    const findNextQuest = (completedId) => {
+      for (const [id, q] of Object.entries(GameData.quests)) {
+        if (q.prereq === completedId) return { id, quest: q };
+      }
+      return null;
+    };
+    
     const availableQuests = Quests.availableQuests.map(id => {
       const q = GameData.quests[id];
       const canAccept = Quests.canAccept(player, id);
       return `
         <div class="quest-item ${canAccept ? '' : 'disabled'}" style="opacity: ${canAccept ? 1 : 0.5};">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <strong style="color: #4fc3f7;">${q.name}</strong>
-              <span style="color: #888; font-size: 12px; margin-left: 10px;">Lv.${q.level}</span>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <strong style="color: #4fc3f7;">${q.name}</strong>
+                <span style="color: #888; font-size: 12px;">Lv.${q.level}</span>
+                ${q.isBoss ? '<span style="background: rgba(231, 76, 60, 0.2); color: #e74c3c; padding: 1px 6px; border-radius: 3px; font-size: 10px;">BOSS</span>' : ''}
+              </div>
+              <p style="color: rgba(200, 220, 255, 0.7); font-size: 12px; margin: 5px 0;">${q.description}</p>
+              ${q.region ? `<p style="font-size: 11px; margin-top: 3px;">📍 推荐区域: ${getRegionInfo(q.region)}</p>` : ''}
+              <p style="color: #f1c40f; font-size: 11px; margin-top: 3px;">
+                奖励: ${q.rewards.exp ? `${q.rewards.exp} EXP ` : ''}${q.rewards.gold ? `${q.rewards.gold} 金` : ''}
+                ${q.rewards.items ? q.rewards.items.map(i => {
+                  const item = GameData.items[i];
+                  return item ? ` ${item.icon}${item.name}` : '';
+                }).join('') : ''}
+              </p>
             </div>
-            ${canAccept ? `<button class="ui-button" style="padding: 6px 12px; font-size: 12px;" 
+            ${canAccept ? `<button class="ui-button" style="padding: 6px 12px; font-size: 12px; flex-shrink: 0;" 
                onclick="UI.acceptQuest('${id}')">接取</button>` : ''}
           </div>
-          <p style="color: rgba(200, 220, 255, 0.7); font-size: 12px; margin: 5px 0;">${q.description}</p>
-          <p style="color: #f1c40f; font-size: 11px;">
-            奖励: ${q.rewards.exp ? `${q.rewards.exp} EXP ` : ''}${q.rewards.gold ? `${q.rewards.gold} 金` : ''}
-            ${q.rewards.items ? q.rewards.items.map(i => {
-              const item = GameData.items[i];
-              return item ? ` ${item.icon}${item.name}` : '';
-            }).join('') : ''}
-          </p>
         </div>
       `;
     }).join('');
+    
+    let nextStepHint = '';
+    if (Quests.activeQuests.length === 0 && Quests.availableQuests.length === 0) {
+      const allQuestIds = Object.keys(GameData.quests);
+      const completedIds = Object.keys(player.quests).filter(id => player.quests[id].completed);
+      const lastCompleted = completedIds[completedIds.length - 1];
+      const nextQuest = findNextQuest(lastCompleted);
+      if (nextQuest) {
+        nextStepHint = `
+          <div style="padding: 15px; background: rgba(46, 204, 113, 0.1); border: 2px solid rgba(46, 204, 113, 0.3); border-radius: 8px; margin-bottom: 20px;">
+            <p style="color: #2ecc71; font-size: 13px; font-weight: bold;">✅ 当前所有任务已完成</p>
+            <p style="color: rgba(200, 220, 255, 0.7); font-size: 12px; margin-top: 5px;">
+              下一个任务: <strong style="color: #4fc3f7;">${nextQuest.quest.name}</strong>
+              ${nextQuest.quest.level > player.level ? ` (需要等级 ${nextQuest.quest.level}，当前 ${player.level})` : ''}
+              ${nextQuest.quest.region ? `<br>📍 推荐前往: ${getRegionInfo(nextQuest.quest.region)}` : ''}
+            </p>
+          </div>
+        `;
+      } else {
+        nextStepHint = `
+          <div style="padding: 15px; background: rgba(241, 196, 15, 0.1); border: 2px solid rgba(241, 196, 15, 0.3); border-radius: 8px; margin-bottom: 20px;">
+            <p style="color: #f1c40f; font-size: 13px; font-weight: bold;">🎉 恭喜！你已完成所有主线任务</p>
+            <p style="color: rgba(200, 220, 255, 0.7); font-size: 12px; margin-top: 5px;">
+              可以前往训练场练习连招，或重游各区域收集怪物图鉴。
+            </p>
+          </div>
+        `;
+      }
+    }
     
     const activeQuests = Quests.activeQuests.map(aq => {
       const q = GameData.quests[aq.id];
       const progress = Quests.getProgress(aq);
       const canComplete = Quests.isQuestComplete(aq, q);
+      const nextQuest = findNextQuest(aq.id);
+      let nextHint = '';
+      if (canComplete && nextQuest) {
+        nextHint = `
+          <p style="font-size: 11px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.1);">
+            <span style="color: #2ecc71;">➡️ 完成后下一任务: </span>
+            <strong style="color: #4fc3f7;">${nextQuest.quest.name}</strong>
+            ${nextQuest.quest.region ? `（${getRegionInfo(nextQuest.quest.region)}）` : ''}
+          </p>
+        `;
+      } else if (canComplete && !nextQuest) {
+        nextHint = `
+          <p style="font-size: 11px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.1);">
+            <span style="color: #f1c40f;">🏆 这是最终任务！完成后通关全部主线。</span>
+          </p>
+        `;
+      }
       return `
         <div class="quest-item ${canComplete ? 'completed' : 'active'}">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <strong style="color: #fff;">${q.name}</strong>
-              <span style="color: ${canComplete ? '#2ecc71' : '#f1c40f'}; font-size: 12px; margin-left: 10px;">
-                进度: ${progress}
-              </span>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <strong style="color: #fff;">${q.name}</strong>
+                ${q.isBoss ? '<span style="background: rgba(231, 76, 60, 0.2); color: #e74c3c; padding: 1px 6px; border-radius: 3px; font-size: 10px;">BOSS</span>' : ''}
+                <span style="color: ${canComplete ? '#2ecc71' : '#f1c40f'}; font-size: 12px;">
+                  进度: ${progress}
+                </span>
+              </div>
+              <p style="color: rgba(200, 220, 255, 0.7); font-size: 12px; margin: 5px 0;">${q.description}</p>
+              ${q.region ? `<p style="font-size: 11px;">📍 推荐区域: ${getRegionInfo(q.region)}</p>` : ''}
+              ${nextHint}
             </div>
-            <div style="display: flex; gap: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 6px; flex-shrink: 0;">
               ${canComplete ? `<button class="ui-button success" style="padding: 6px 12px; font-size: 12px;" 
                  onclick="UI.completeQuest('${aq.id}')">完成</button>` : ''}
               <button class="ui-button danger" style="padding: 6px 12px; font-size: 12px;" 
                  onclick="UI.abandonQuest('${aq.id}')">放弃</button>
             </div>
           </div>
-          <p style="color: rgba(200, 220, 255, 0.7); font-size: 12px; margin: 5px 0;">${q.description}</p>
         </div>
       `;
     }).join('');
     
     panel.innerHTML = `
-      <h2 class="ui-title" style="font-size: 20px; margin-bottom: 20px;">📜 任务</h2>
+      <h2 class="ui-title" style="font-size: 20px; margin-bottom: 15px;">📜 任务</h2>
+      
+      ${nextStepHint}
       
       <div style="margin-bottom: 20px;">
-        <h3 style="color: #2ecc71; margin-bottom: 10px; font-size: 14px;">进行中</h3>
+        <h3 style="color: #2ecc71; margin-bottom: 10px; font-size: 14px;">进行中 (${Quests.activeQuests.length})</h3>
         <div class="quest-panel">
           ${activeQuests || '<p style="color: #888; font-size: 13px; padding: 15px; text-align: center;">暂无进行中的任务</p>'}
         </div>
       </div>
       
       <div>
-        <h3 style="color: #f1c40f; margin-bottom: 10px; font-size: 14px;">可接取</h3>
+        <h3 style="color: #f1c40f; margin-bottom: 10px; font-size: 14px;">可接取 (${Quests.availableQuests.length})</h3>
         <div class="quest-panel">
           ${availableQuests || '<p style="color: #888; font-size: 13px; padding: 15px; text-align: center;">暂无可接取的任务</p>'}
         </div>
@@ -824,7 +920,7 @@ const UI = {
       
       <div style="padding: 15px; background: rgba(0, 0, 0, 0.3); border-radius: 8px;">
         <p style="color: rgba(200, 220, 255, 0.7); font-size: 13px;">
-          💡 提示：点击物品购买。出售物品请打开背包（I键）。
+          💡 提示：点击物品购买。出售物品请打开背包（B键 或 Tab键）。
         </p>
       </div>
       
@@ -876,29 +972,43 @@ const UI = {
         const actualIdx = player.inventory.indexOf(item);
         const itemData = GameData.items[item.itemId];
         const rarityClass = getRarityClass(itemData.rarity);
-        const cost = getEnhanceCost(item.enhanceLevel || 0);
-        const rate = Math.floor(getEnhanceSuccessRate(item.enhanceLevel || 0) * 100);
+        const curLv = item.enhanceLevel || 0;
+        const cost = getEnhanceCost(curLv);
+        const rate = Math.floor(getEnhanceSuccessRate(curLv) * 100);
         const canAfford = player.gold >= cost;
+        
+        const mainStat = itemData.type === 'weapon' ? 'atk' : 'def';
+        const baseVal = itemData.stats ? (itemData.stats[mainStat] || 0) : 0;
+        const currentBonus = curLv > 0 ? Math.floor(baseVal * 0.15 * curLv) : 0;
+        const nextBonus = Math.floor(baseVal * 0.15 * (curLv + 1));
+        const statName = mainStat === 'atk' ? '攻击' : '防御';
+        
         return `
           <div style="display: flex; align-items: center; gap: 15px; padding: 12px; 
                background: rgba(255, 255, 255, 0.03); border-radius: 8px; margin-bottom: 10px;">
             <div class="inventory-slot ${rarityClass}" style="width: 50px; height: 50px; flex-shrink: 0;">
               <span style="font-size: 22px;">${itemData.icon}</span>
-              ${item.enhanceLevel ? `<span style="position:absolute;top:0;right:2px;color:#f1c40f;font-size:10px;">+${item.enhanceLevel}</span>` : ''}
+              ${curLv > 0 ? `<span style="position:absolute;top:0;right:2px;color:#f1c40f;font-size:10px;">+${curLv}</span>` : ''}
             </div>
             <div style="flex: 1;">
               <strong style="color: ${getRarityColor(itemData.rarity)}; font-size: 14px;">
-                ${itemData.name}${item.enhanceLevel ? ` +${item.enhanceLevel}` : ''}
+                ${itemData.name}${curLv > 0 ? ` <span style="color:#f1c40f;">+${curLv}</span>` : ''}
               </strong>
               <div style="font-size: 12px; color: rgba(200, 220, 255, 0.7); margin-top: 3px;">
                 费用: <span style="color: ${canAfford ? '#f1c40f' : '#e74c3c'};">${cost} 金币</span>
                 <span style="margin-left: 15px;">成功率: <span style="color: ${rate >= 50 ? '#2ecc71' : '#e74c3c'};">${rate}%</span></span>
               </div>
-              ${itemData.stats ? `<div style="font-size: 11px; color: #2ecc71; margin-top: 3px;">${this.formatStats(itemData.stats, item.enhanceLevel)}</div>` : ''}
+              ${itemData.stats ? `
+                <div style="font-size: 11px; color: #2ecc71; margin-top: 3px;">
+                  当前: ${statName} +${baseVal + currentBonus}${curLv > 0 ? ` <span style="color:#f1c40f;">(强化+${currentBonus})</span>` : ''}
+                  <span style="color: #888; margin: 0 6px;">→</span>
+                  下一级: <span style="color:#f1c40f;">${statName} +${baseVal + nextBonus}</span>
+                </div>
+              ` : ''}
             </div>
             <button class="ui-button" style="padding: 8px 16px; font-size: 12px; opacity: ${canAfford ? 1 : 0.5};" 
                     onclick="UI.enhanceItem(${actualIdx})" ${canAfford ? '' : 'disabled'}>
-              强化 +${(item.enhanceLevel || 0) + 1}
+              强化 +${curLv + 1}
             </button>
           </div>
         `;
@@ -1140,28 +1250,59 @@ const UI = {
       const isCurrent = regionId === currentRegion;
       const isLocked = false;
       
+      const records = (Game.player && Game.player.regionRecords) ? Game.player.regionRecords[regionId] : null;
+      const gradeColors = { S: '#f1c40f', A: '#e74c3c', B: '#3498db', C: '#2ecc71', D: '#95a5a6' };
+      
+      let bestTimeStr = '--:--';
+      if (records && records.bestTime) {
+        const m = Math.floor(records.bestTime / 60000);
+        const s = Math.floor((records.bestTime % 60000) / 1000);
+        bestTimeStr = `${m}:${s.toString().padStart(2, '0')}`;
+      }
+      
+      const regionBosses = [];
+      if (region.boss) regionBosses.push(GameData.monsters[region.boss] ? GameData.monsters[region.boss].name : region.boss);
+      if (region.boss2) regionBosses.push(GameData.monsters[region.boss2] ? GameData.monsters[region.boss2].name : region.boss2);
+      
       return `
         <div style="padding: 15px; background: rgba(255, 255, 255, 0.03); border-radius: 8px; margin-bottom: 10px;
                     border: 2px solid ${isCurrent ? region.color : 'rgba(255, 255, 255, 0.1)'};
                     opacity: ${isLocked ? 0.5 : 1};">
-          <div style="display: flex; align-items: center; justify-content: space-between;">
-            <div style="display: flex; align-items: center; gap: 15px;">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 15px;">
+            <div style="display: flex; align-items: flex-start; gap: 15px; flex: 1;">
               <div style="width: 50px; height: 50px; border-radius: 50%; background: ${region.color}; 
-                          display: flex; align-items: center; justify-content: center; font-size: 24px;">
+                          display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;">
                 ${regionId === 'town' ? '🏠' : regionId === 'forest' ? '🌲' : regionId === 'mine' ? '⛏️' : regionId === 'sky' ? '☁️' : regionId === 'tower' ? '🏰' : '🎯'}
               </div>
-              <div>
-                <div style="display: flex; align-items: center; gap: 10px;">
+              <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                   <strong style="color: ${region.color}; font-size: 15px;">${region.name}</strong>
                   ${isCurrent ? '<span style="background: #2ecc71; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 10px;">当前</span>' : ''}
                   <span style="color: #888; font-size: 11px;">Lv.${region.levelRange}</span>
+                  ${records && records.cleared ? '<span style="background: rgba(46, 204, 113, 0.2); color: #2ecc71; padding: 2px 8px; border-radius: 4px; font-size: 10px;">✅ 已通关</span>' : (region.boss ? '<span style="background: rgba(231, 76, 60, 0.2); color: #e74c3c; padding: 2px 8px; border-radius: 4px; font-size: 10px;">未通关</span>' : '')}
                 </div>
                 <p style="color: rgba(200, 220, 255, 0.7); font-size: 12px; margin: 5px 0;">${region.description}</p>
-                ${region.boss ? `<p style="color: #e74c3c; font-size: 11px; margin-top: 3px;">👹 区域首领: ${GameData.monsters[region.boss].name}</p>` : ''}
+                ${regionBosses.length > 0 ? `<p style="color: #e74c3c; font-size: 11px; margin-top: 3px;">👹 区域首领: ${regionBosses.join('、')}</p>` : ''}
+                ${regionId !== 'town' && regionId !== 'training' ? `
+                  <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 11px;">
+                    <div style="color: #888;">
+                      最高评价: 
+                      <span style="color: ${records && records.bestGrade ? gradeColors[records.bestGrade] : '#555'}; font-weight: bold;">
+                        ${records && records.bestGrade ? records.bestGrade : '—'}
+                      </span>
+                    </div>
+                    <div style="color: #888;">
+                      最快时间: 
+                      <span style="color: ${records && records.bestTime ? '#4fc3f7' : '#555'}; font-weight: bold;">
+                        ${bestTimeStr}
+                      </span>
+                    </div>
+                  </div>
+                ` : ''}
               </div>
             </div>
             ${!isCurrent && !isLocked ? `
-              <button class="ui-button" style="padding: 8px 16px; font-size: 12px;" 
+              <button class="ui-button" style="padding: 8px 16px; font-size: 12px; flex-shrink: 0;" 
                       onclick="UI.teleportToRegion('${regionId}')">前往</button>
             ` : ''}
           </div>
@@ -1296,9 +1437,12 @@ const UI = {
     this.currentPanel = 'codex';
   },
 
-  showLevelResult(victory, clearTime, maxCombo, drops) {
+  showLevelResult(report) {
     this.clearUI();
     Game.paused = true;
+    
+    const { victory, clearTime, maxCombo, monstersKilled, itemsPickedUp, goldChange, expGained, grade, regionId } = report;
+    const region = MapManager.currentRegion;
     
     const panel = document.createElement('div');
     panel.className = 'ui-panel';
@@ -1308,9 +1452,9 @@ const UI = {
       left: 50%;
       transform: translate(-50%, -50%);
       padding: 30px;
-      width: 550px;
+      width: 620px;
       z-index: 200;
-      max-height: 85vh;
+      max-height: 88vh;
       overflow-y: auto;
       animation: fadeIn 0.5s ease-out;
     `;
@@ -1319,68 +1463,95 @@ const UI = {
     const seconds = Math.floor((clearTime % 60000) / 1000);
     const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
     
-    const allDrops = [];
-    for (const entry of drops) {
-      for (const drop of entry.drops) {
-        const existing = allDrops.find(d => d.itemId === drop);
-        if (existing) {
-          existing.count++;
-        } else {
-          allDrops.push({ itemId: drop, count: 1 });
-        }
-      }
-    }
+    const gradeColors = { S: '#f1c40f', A: '#e74c3c', B: '#3498db', C: '#2ecc71', D: '#95a5a6' };
     
-    const dropsHTML = allDrops.length > 0 ? allDrops.map(drop => {
-      const itemData = GameData.items[drop.itemId];
+    const killsArr = Object.entries(monstersKilled || {});
+    const totalKills = killsArr.reduce((sum, [, v]) => sum + v.count, 0);
+    const killsHTML = totalKills > 0 ? killsArr.map(([type, info]) => `
+      <div style="display: flex; align-items: center; gap: 10px; padding: 6px 10px;
+                  background: rgba(255, 255, 255, 0.03); border-radius: 6px; margin-bottom: 4px;">
+        <div style="width: 26px; height: 26px; border-radius: 50%; background: ${info.color || '#555'};
+                    display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0;">
+          ${info.isBoss ? '👹' : '👾'}
+        </div>
+        <span style="color: ${info.isBoss ? '#e74c3c' : '#e0e8ff'}; flex: 1; font-size: 13px;">${info.name}</span>
+        <span style="color: #f39c12; font-size: 13px; font-weight: bold;">x${info.count}</span>
+      </div>
+    `).join('') : '<p style="color: #666; text-align: center; padding: 15px; font-size: 12px;">本关未击败任何怪物</p>';
+    
+    const itemsArr = Object.entries(itemsPickedUp || {});
+    const itemsHTML = itemsArr.length > 0 ? itemsArr.map(([itemId, count]) => {
+      const itemData = GameData.items[itemId];
       if (!itemData) return '';
       const rarityColor = getRarityColor(itemData.rarity);
       return `
-        <div style="display: flex; align-items: center; gap: 10px; padding: 8px; 
-                    background: rgba(255, 255, 255, 0.03); border-radius: 6px; margin-bottom: 5px;">
-          <span style="font-size: 18px;">${itemData.icon}</span>
-          <span style="color: ${rarityColor}; flex: 1;">${itemData.name}</span>
-          <span style="color: #f1c40f;">x${drop.count}</span>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 6px 10px; 
+                    background: rgba(255, 255, 255, 0.03); border-radius: 6px; margin-bottom: 4px;">
+          <span style="font-size: 16px;">${itemData.icon}</span>
+          <span style="color: ${rarityColor}; flex: 1; font-size: 13px;">${itemData.name}</span>
+          <span style="color: #f1c40f; font-size: 13px; font-weight: bold;">x${count}</span>
         </div>
       `;
-    }).join('') : '<p style="color: #666; text-align: center; padding: 20px;">没有获得物品</p>';
-    
-    const grade = victory ? this.calculateGrade(clearTime, maxCombo) : null;
-    const gradeColors = { S: '#f1c40f', A: '#e74c3c', B: '#3498db', C: '#2ecc71', D: '#95a5a6' };
+    }).join('') : '<p style="color: #666; text-align: center; padding: 15px; font-size: 12px;">本关未获得物品</p>';
     
     panel.innerHTML = `
-      <div style="text-align: center; margin-bottom: 25px;">
-        <h2 class="ui-title" style="font-size: 32px; margin-bottom: 10px; 
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h2 class="ui-title" style="font-size: 28px; margin-bottom: 8px; 
             color: ${victory ? '#2ecc71' : '#e74c3c'};">
-          ${victory ? '🏆 通关成功！' : '💀 挑战失败'}
+          ${victory ? '🏆 通关成功' : '💀 挑战失败'}
         </h2>
+        <p style="color: rgba(200, 220, 255, 0.6); font-size: 12px;">${region ? region.name : ''}</p>
         ${victory && grade ? `
-          <div style="font-size: 64px; font-weight: bold; color: ${gradeColors[grade]}; 
-                      text-shadow: 0 0 20px ${gradeColors[grade]}; margin: 15px 0;">
+          <div style="font-size: 56px; font-weight: bold; color: ${gradeColors[grade]}; 
+                      text-shadow: 0 0 20px ${gradeColors[grade]}; margin: 10px 0;">
             ${grade}
           </div>
         ` : ''}
       </div>
       
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
-        <div style="padding: 15px; background: rgba(0, 0, 0, 0.3); border-radius: 8px; text-align: center;">
-          <div style="color: #888; font-size: 12px; margin-bottom: 5px;">通关时间</div>
-          <div style="color: #4fc3f7; font-size: 24px; font-weight: bold;">${timeStr}</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+        <div style="padding: 12px 10px; background: rgba(0, 0, 0, 0.3); border-radius: 8px; text-align: center;">
+          <div style="color: #888; font-size: 11px; margin-bottom: 3px;">通关时间</div>
+          <div style="color: #4fc3f7; font-size: 18px; font-weight: bold;">${timeStr}</div>
         </div>
-        <div style="padding: 15px; background: rgba(0, 0, 0, 0.3); border-radius: 8px; text-align: center;">
-          <div style="color: #888; font-size: 12px; margin-bottom: 5px;">最大连击</div>
-          <div style="color: #f39c12; font-size: 24px; font-weight: bold;">${maxCombo}</div>
+        <div style="padding: 12px 10px; background: rgba(0, 0, 0, 0.3); border-radius: 8px; text-align: center;">
+          <div style="color: #888; font-size: 11px; margin-bottom: 3px;">最大连击</div>
+          <div style="color: #f39c12; font-size: 18px; font-weight: bold;">${maxCombo}</div>
+        </div>
+        <div style="padding: 12px 10px; background: rgba(0, 0, 0, 0.3); border-radius: 8px; text-align: center;">
+          <div style="color: #888; font-size: 11px; margin-bottom: 3px;">金币变化</div>
+          <div style="color: ${goldChange >= 0 ? '#f1c40f' : '#e74c3c'}; font-size: 18px; font-weight: bold;">
+            ${goldChange >= 0 ? '+' : ''}${goldChange}
+          </div>
+        </div>
+        <div style="padding: 12px 10px; background: rgba(0, 0, 0, 0.3); border-radius: 8px; text-align: center;">
+          <div style="color: #888; font-size: 11px; margin-bottom: 3px;">获得经验</div>
+          <div style="color: #9b59b6; font-size: 18px; font-weight: bold;">+${expGained}</div>
         </div>
       </div>
       
-      <div style="margin-bottom: 25px;">
-        <h3 style="color: #4fc3f7; margin-bottom: 10px; font-size: 14px;">📦 掉落清单</h3>
-        <div style="max-height: 200px; overflow-y: auto;">
-          ${dropsHTML}
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+        <div>
+          <h3 style="color: #4fc3f7; margin-bottom: 8px; font-size: 13px;">⚔️ 击败怪物 (${totalKills})</h3>
+          <div style="max-height: 160px; overflow-y: auto; padding-right: 4px;">
+            ${killsHTML}
+          </div>
+        </div>
+        <div>
+          <h3 style="color: #4fc3f7; margin-bottom: 8px; font-size: 13px;">📦 获得物品 (已进背包)</h3>
+          <div style="max-height: 160px; overflow-y: auto; padding-right: 4px;">
+            ${itemsHTML}
+          </div>
         </div>
       </div>
       
-      <div style="display: flex; gap: 15px; justify-content: center;">
+      <div style="padding: 12px; background: rgba(0, 0, 0, 0.3); border-radius: 8px; margin-bottom: 20px;">
+        <p style="color: rgba(200, 220, 255, 0.7); font-size: 12px; line-height: 1.6;">
+          ${victory ? `✅ 已击败区域首领，可以前往下一区域了！` : `💡 可以继续挑战或返回城镇休整。`}
+        </p>
+      </div>
+      
+      <div style="display: flex; gap: 12px; justify-content: center;">
         <button class="ui-button" onclick="UI.returnToTown()">返回城镇</button>
         ${victory ? `
           <button class="ui-button secondary" onclick="UI.continueExploring()">继续探索</button>

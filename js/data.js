@@ -312,7 +312,8 @@ const GameData = {
       target: { monster: 'slime', count: 5 },
       rewards: { exp: 50, gold: 100, items: ['hp_potion_small'] },
       level: 1,
-      npc: 'quest_giver'
+      npc: 'quest_giver',
+      region: 'forest'
     },
     q2: {
       id: 'q2',
@@ -323,7 +324,8 @@ const GameData = {
       rewards: { exp: 80, gold: 150 },
       level: 5,
       npc: 'quest_giver',
-      prereq: 'q1'
+      prereq: 'q1',
+      region: 'forest'
     },
     q3: {
       id: 'q3',
@@ -334,7 +336,8 @@ const GameData = {
       rewards: { exp: 120, gold: 200, items: ['leather_boots'] },
       level: 8,
       npc: 'quest_giver',
-      prereq: 'q2'
+      prereq: 'q2',
+      region: 'forest'
     },
     q4: {
       id: 'q4',
@@ -345,7 +348,9 @@ const GameData = {
       rewards: { exp: 300, gold: 500, items: ['steel_sword'] },
       level: 12,
       npc: 'quest_giver',
-      prereq: 'q3'
+      prereq: 'q3',
+      region: 'forest',
+      isBoss: true
     },
     q5: {
       id: 'q5',
@@ -356,7 +361,8 @@ const GameData = {
       rewards: { exp: 200, gold: 300 },
       level: 15,
       npc: 'quest_giver',
-      prereq: 'q4'
+      prereq: 'q4',
+      region: 'mine'
     },
     q6: {
       id: 'q6',
@@ -367,7 +373,9 @@ const GameData = {
       rewards: { exp: 600, gold: 1000, items: ['chain_mail'] },
       level: 20,
       npc: 'quest_giver',
-      prereq: 'q5'
+      prereq: 'q5',
+      region: 'mine',
+      isBoss: true
     },
     q7: {
       id: 'q7',
@@ -378,7 +386,8 @@ const GameData = {
       rewards: { exp: 400, gold: 500 },
       level: 25,
       npc: 'quest_giver',
-      prereq: 'q6'
+      prereq: 'q6',
+      region: 'sky'
     },
     q8: {
       id: 'q8',
@@ -389,7 +398,9 @@ const GameData = {
       rewards: { exp: 1000, gold: 2000, items: ['plate_armor'] },
       level: 30,
       npc: 'quest_giver',
-      prereq: 'q7'
+      prereq: 'q7',
+      region: 'sky',
+      isBoss: true
     },
     q9: {
       id: 'q9',
@@ -400,7 +411,8 @@ const GameData = {
       rewards: { exp: 800, gold: 1000 },
       level: 35,
       npc: 'quest_giver',
-      prereq: 'q8'
+      prereq: 'q8',
+      region: 'tower'
     },
     q10: {
       id: 'q10',
@@ -411,7 +423,9 @@ const GameData = {
       rewards: { exp: 2000, gold: 4000, items: ['thunder_blade'] },
       level: 40,
       npc: 'quest_giver',
-      prereq: 'q9'
+      prereq: 'q9',
+      region: 'tower',
+      isBoss: true
     },
     q11: {
       id: 'q11',
@@ -422,7 +436,8 @@ const GameData = {
       rewards: { exp: 1500, gold: 2000 },
       level: 45,
       npc: 'quest_giver',
-      prereq: 'q10'
+      prereq: 'q10',
+      region: 'tower'
     },
     q12: {
       id: 'q12',
@@ -433,7 +448,10 @@ const GameData = {
       rewards: { exp: 5000, gold: 10000, items: ['legendary_weapon'] },
       level: 55,
       npc: 'quest_giver',
-      prereq: 'q11'
+      prereq: 'q11',
+      region: 'tower',
+      isBoss: true,
+      isFinal: true
     }
   },
 
