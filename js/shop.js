@@ -37,11 +37,16 @@ const Shop = {
       return false;
     }
 
-    const sellPrice = Math.floor((itemData.price || 0) * 0.5 * item.count);
+    let sellPrice = Math.floor((itemData.price || 0) * 0.5 * item.count);
     if (item.enhanceLevel) {
       for (let i = 0; i < item.enhanceLevel; i++) {
         sellPrice += Math.floor(getEnhanceCost(i) * 0.3);
       }
+    }
+
+    if (sellPrice <= 0) {
+      showNotification('该物品无法出售', 'warning');
+      return false;
     }
 
     player.gold += sellPrice;

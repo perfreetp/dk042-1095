@@ -93,7 +93,7 @@ const Input = {
   },
 
   isInventoryPressed() {
-    return this.isKeyPressed('KeyI') || this.isKeyPressed('Tab');
+    return this.isKeyPressed('KeyB') || this.isKeyPressed('Tab');
   },
 
   isEscapePressed() {

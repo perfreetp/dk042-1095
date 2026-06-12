@@ -115,6 +115,12 @@ const GameData = {
       drops: [{ item: 'metal_plate', chance: 0.55 }],
       color: '#607d8b', size: 38, isBoss: false
     },
+    spider: {
+      name: '洞穴蜘蛛',
+      hp: 70, atk: 13, def: 5, spd: 3, exp: 30, gold: 15,
+      drops: [{ item: 'spider_silk', chance: 0.15 }],
+      color: '#6a1b9a', size: 26, isBoss: false
+    },
     mushroom_king: {
       name: '蘑菇王',
       hp: 300, atk: 25, def: 10, spd: 1.5, exp: 200, gold: 150,
@@ -254,7 +260,7 @@ const GameData = {
       groundColor: '#e0e0e0',
       levelRange: '20-40',
       monsters: ['harpy', 'golem'],
-      boss: 'sky_dragon',
+      boss: 'stone_giant',
       bossX: 2400,
       npcs: [],
       portals: [
@@ -272,8 +278,10 @@ const GameData = {
       groundColor: '#424242',
       levelRange: '35-60',
       monsters: ['robot', 'golem'],
-      boss: 'mecha_boss',
-      bossX: 2600,
+      boss: 'sky_dragon',
+      boss2: 'mecha_boss',
+      bossX: 2400,
+      boss2X: 2600,
       npcs: [],
       portals: [
         { to: 'sky', x: 50, y: 450, label: '← 天空栈道' }

@@ -98,7 +98,7 @@ const UI = {
         </div>
         <div>
           <h3 style="color: #4fc3f7; margin-bottom: 10px; font-size: 14px;">界面控制</h3>
-          <p style="font-size: 13px; margin: 5px 0;">I 或 Tab：背包</p>
+          <p style="font-size: 13px; margin: 5px 0;">B 或 Tab：背包</p>
           <p style="font-size: 13px; margin: 5px 0;">Q：任务面板</p>
           <p style="font-size: 13px; margin: 5px 0;">K：技能面板</p>
           <p style="font-size: 13px; margin: 5px 0;">M：地图</p>
@@ -351,7 +351,7 @@ const UI = {
       
       <div style="position: absolute; bottom: 20px; right: 15px; z-index: 50;">
         <div style="background: rgba(0, 0, 0, 0.7); padding: 8px 12px; border-radius: 8px; font-size: 11px; color: rgba(200, 220, 255, 0.6); border: 1px solid rgba(100, 150, 255, 0.3);">
-          <div>I:背包 | Q:任务 | K:技能 | M:地图 | L:图鉴</div>
+          <div>B:背包 | Q:任务 | K:技能 | M:地图 | L:图鉴</div>
         </div>
       </div>
     `;

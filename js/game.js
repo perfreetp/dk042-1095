@@ -242,8 +242,11 @@ const Game = {
     const goldDrop = Math.floor(monster.data.gold * goldBonus);
     const expDrop = Math.floor(monster.data.exp * expBonus);
     
+    const actualDrops = [];
+    
     if (goldDrop > 0) {
       ItemManager.addDrop('gold', monster.x, monster.y - 20, Math.ceil(goldDrop / 10));
+      actualDrops.push('gold');
     }
     
     if (expDrop > 0) {
@@ -253,17 +256,28 @@ const Game = {
     for (const drop of monster.data.drops) {
       if (Math.random() < drop.chance) {
         ItemManager.addDrop(drop.item, monster.x + randomRange(-20, 20), monster.y - 20);
+        actualDrops.push(drop.item);
       }
     }
     
-    this.levelDrops.push({
-      monster: monster.data.name,
-      drops: monster.data.drops.filter(d => Math.random() < d.chance).map(d => d.item)
-    });
+    if (actualDrops.length > 0) {
+      this.levelDrops.push({
+        monster: monster.data.name,
+        drops: actualDrops
+      });
+    }
     
     if (monster.isBoss) {
-      MapManager.bossDefeated = true;
-      this.endLevel(true);
+      if (MapManager.currentRegion && MapManager.currentRegion.boss2 && !MapManager.bossDefeated) {
+        MapManager.bossDefeated = true;
+        showNotification('第一首领已击败！继续深入挑战第二首领！', 'success');
+      } else if (MapManager.currentRegion && MapManager.currentRegion.boss2 && MapManager.bossDefeated && !MapManager.boss2Defeated) {
+        MapManager.boss2Defeated = true;
+        this.endLevel(true);
+      } else {
+        MapManager.bossDefeated = true;
+        this.endLevel(true);
+      }
     }
     
     this.addEffect({
@@ -329,14 +343,20 @@ const Game = {
       this.player.removeItem('hidden_key');
     }
     
+    const chestDrops = [];
     for (const item of chest.loot) {
       if (item === 'gold') {
-        const amount = randomRange(50, 200);
+        const amount = Math.floor(randomRange(50, 200));
         this.player.gainGold(amount);
+        chestDrops.push('gold');
       } else {
         this.player.addItem(item);
-        this.levelDrops.push({ monster: '宝箱', drops: [item] });
+        chestDrops.push(item);
       }
+    }
+    
+    if (chestDrops.length > 0) {
+      this.levelDrops.push({ monster: '宝箱', drops: chestDrops });
     }
     
     this.addEffect({
@@ -351,7 +371,7 @@ const Game = {
   },
   
   handleUIInput() {
-    if (Input.isKeyPressed('KeyI') || Input.isKeyPressed('Tab')) {
+    if (Input.isKeyPressed('KeyB') || Input.isKeyPressed('Tab')) {
       if (UI.currentPanel === 'inventory') {
         UI.closePanel();
       } else {
@@ -408,7 +428,9 @@ const Game = {
   changeRegion(regionId) {
     const oldRegion = MapManager.currentRegion;
     
-    if (oldRegion && oldRegion.boss && !MapManager.bossDefeated && oldRegion.id !== 'town' && oldRegion.id !== 'training') {
+    const hasUndefeatedBoss = oldRegion && oldRegion.boss && !MapManager.bossDefeated && oldRegion.id !== 'town' && oldRegion.id !== 'training';
+    const hasUndefeatedBoss2 = oldRegion && oldRegion.boss2 && !MapManager.boss2Defeated;
+    if (hasUndefeatedBoss || hasUndefeatedBoss2) {
       showNotification('请先击败区域首领再离开', 'warning');
       return;
     }

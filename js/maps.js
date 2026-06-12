@@ -6,7 +6,9 @@ const MapManager = {
   portals: [],
   chests: [],
   bossSpawned: false,
+  boss2Spawned: false,
   bossDefeated: false,
+  boss2Defeated: false,
   mapWidth: 3000,
 
   init() {
@@ -15,7 +17,9 @@ const MapManager = {
     this.portals = [];
     this.chests = [];
     this.bossSpawned = false;
+    this.boss2Spawned = false;
     this.bossDefeated = false;
+    this.boss2Defeated = false;
   },
 
   loadRegion(regionId) {
@@ -72,6 +76,18 @@ const MapManager = {
         const boss = new Monster(bossType, bossX, 495);
         this.monsters.push(boss);
         this.bossSpawned = true;
+        showNotification(`首领出现：${GameData.monsters[bossType].name}！`, 'warning');
+        Renderer.shake(15, 500);
+      }
+    }
+
+    if (this.currentRegion && this.currentRegion.boss2 && !this.boss2Spawned && !this.boss2Defeated && this.bossDefeated) {
+      if (player.x > (this.currentRegion.boss2X || 2600) - 200) {
+        const bossType = this.currentRegion.boss2;
+        const bossX = this.currentRegion.boss2X || 2600;
+        const boss = new Monster(bossType, bossX, 495);
+        this.monsters.push(boss);
+        this.boss2Spawned = true;
         showNotification(`首领出现：${GameData.monsters[bossType].name}！`, 'warning');
         Renderer.shake(15, 500);
       }

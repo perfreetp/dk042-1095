@@ -34,6 +34,9 @@ const SkillManager = {
           const dy = p.y - (monster.y - monster.data.size / 2);
           if (Math.sqrt(dx * dx + dy * dy) < monster.data.size) {
             this.hitMonster(monster, p, player);
+            if (monster.isDead) {
+              Game.onMonsterDeath(monster);
+            }
             return false;
           }
         }
@@ -102,6 +105,9 @@ const SkillManager = {
     
     for (const monster of hitMonsters) {
       this.hitMonster(monster, attack, player);
+      if (monster.isDead) {
+        Game.onMonsterDeath(monster);
+      }
     }
     
     return hitMonsters.length;
@@ -119,6 +125,9 @@ const SkillManager = {
       
       if (dist < attack.radius + monster.data.size / 2) {
         this.hitMonster(monster, attack, player);
+        if (monster.isDead) {
+          Game.onMonsterDeath(monster);
+        }
         hitCount++;
       }
     }
@@ -154,6 +163,9 @@ const SkillManager = {
       
       hitMonsters.add(nearest);
       this.hitMonster(nearest, attack, player);
+      if (nearest.isDead) {
+        Game.onMonsterDeath(nearest);
+      }
       
       currentPos = { x: nearest.x, y: nearest.y - nearest.data.size / 2 };
       remainingChains--;
